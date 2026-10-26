@@ -24,13 +24,14 @@ class _PlanStepState extends State<PlanStep> {
 
   bool get _valid => _kind == 'flexible' || (_kind == 'complete' && _audience != null);
 
-  Future<void> _save() async {
-    final ok = await widget.builder.choosePlan(kind: _kind!, audience: _audience);
-    if (ok && mounted) {
-      final next = widget.builder.nextStep;
-      if (next != null) {
-        await widget.builder.goTo(next);
-      }
+  /// A pick is saved straight away, so "Continue" never leaves it behind.
+  Future<void> _pick({required String kind, String? audience}) async {
+    setState(() {
+      _kind = kind;
+      _audience = kind == 'flexible' ? null : audience ?? _audience;
+    });
+    if (_valid && _changed) {
+      await widget.builder.choosePlan(kind: _kind!, audience: _audience);
     }
   }
 
@@ -46,7 +47,7 @@ class _PlanStepState extends State<PlanStep> {
           title: 'Complete',
           text: 'One package for the whole treatment. Retainers, whitening trays and retention wires included.',
           selected: _kind == 'complete',
-          onTap: () => setState(() => _kind = 'complete'),
+          onTap: () => _pick(kind: 'complete'),
         ),
         if (_kind == 'complete')
           Padding(
@@ -58,7 +59,7 @@ class _PlanStepState extends State<PlanStep> {
                   text: 'All permanent teeth. The finished plan sets the package.',
                   selected: _audience == 'adult',
                   compact: true,
-                  onTap: () => setState(() => _audience = 'adult'),
+                  onTap: () => _pick(kind: 'complete', audience: 'adult'),
                 ),
                 const SizedBox(height: 10),
                 _Choice(
@@ -66,7 +67,7 @@ class _PlanStepState extends State<PlanStep> {
                   text: 'Mixed dentition. Shine Grow: unlimited aligners and series for 18 months.',
                   selected: _audience == 'growing',
                   compact: true,
-                  onTap: () => setState(() => _audience = 'growing'),
+                  onTap: () => _pick(kind: 'complete', audience: 'growing'),
                 ),
               ],
             ),
@@ -77,15 +78,10 @@ class _PlanStepState extends State<PlanStep> {
           title: 'Flexible',
           text: 'Pay per unit: one treatment plan, then aligners as you go. No expiry.',
           selected: _kind == 'flexible',
-          onTap: () => setState(() => _kind = 'flexible'),
+          onTap: () => _pick(kind: 'flexible'),
         ),
         if (builder.error != null) ...[const SizedBox(height: 14), Notice(builder.error!, danger: true)],
-        const SizedBox(height: 20),
-        if (_changed || !builder.isComplete(BuilderStep.plan))
-          FilledButton(
-            onPressed: _valid && !builder.busy ? _save : null,
-            child: Text(_valid ? 'Save the plan' : (_kind == 'complete' ? 'Choose adult or growing' : 'Choose a plan')),
-          ),
+        if (_kind == 'complete' && _audience == null) ...[const SizedBox(height: 14), const Notice('Choose adult or growing patient.')],
       ],
     );
   }

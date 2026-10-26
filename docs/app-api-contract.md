@@ -32,7 +32,7 @@ Base URL is configurable in each app. DEV: `https://drshine-production-8tmpnh.la
 `order_summary` = `{id, reference, type, type_label, series, status, status_label, journey_label, created_at, submitted_at, draft}`.
 
 ### Aligners order (the case builder)
-- `POST /orders {patient_id, type: "aligner_series"}` → `201 {order}` (a draft)
+- `POST /orders {patient_id, type: "aligner_series"}` → `201 {order}` (a new draft), or `200 {order}` with the patient's open Aligners draft if there is one
 - `GET /orders/{id}` → `{order}` (full state, below)
 - `PUT /orders/{id}/plan {kind: complete|flexible, audience: adult|growing}` → `{order}`. Only when `plan_choice.asks` is true.
 - `POST /orders/{id}/files` (multipart: `kind`=photo|scan, `slot`, `file`) → `201 {file}`

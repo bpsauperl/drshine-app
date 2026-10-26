@@ -46,8 +46,7 @@ class _PlanStepState extends State<PlanStep> {
       children: [
         const StepHeading(
           title: 'Choose a plan.',
-          subtitle:
-              'Once for the treatment. Flexible can move to Complete any time.',
+          subtitle: 'Complete covers the treatment until it expires. Flexible covers this series only, so each new series asks again.',
         ),
         _Choice(
           key: const Key('plan-complete'),

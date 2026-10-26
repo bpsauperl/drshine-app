@@ -20,9 +20,12 @@ class _PlanStepState extends State<PlanStep> {
   late String? _audience = widget.builder.order.planChoice.audience;
 
   bool get _changed =>
-      _kind != widget.builder.order.planChoice.kind || (_kind == 'complete' && _audience != widget.builder.order.planChoice.audience);
+      _kind != widget.builder.order.planChoice.kind ||
+      (_kind == 'complete' &&
+          _audience != widget.builder.order.planChoice.audience);
 
-  bool get _valid => _kind == 'flexible' || (_kind == 'complete' && _audience != null);
+  bool get _valid =>
+      _kind == 'flexible' || (_kind == 'complete' && _audience != null);
 
   /// A pick is saved straight away, so "Continue" never leaves it behind.
   Future<void> _pick({required String kind, String? audience}) async {
@@ -41,7 +44,11 @@ class _PlanStepState extends State<PlanStep> {
     return ListView(
       padding: const EdgeInsets.all(Brand.gutter),
       children: [
-        const StepHeading(title: 'Choose a plan.', subtitle: 'Once for the treatment. Flexible can move to Complete any time.'),
+        const StepHeading(
+          title: 'Choose a plan.',
+          subtitle:
+              'Once for the treatment. Flexible can move to Complete any time.',
+        ),
         _Choice(
           key: const Key('plan-complete'),
           title: 'Complete',
@@ -80,15 +87,28 @@ class _PlanStepState extends State<PlanStep> {
           selected: _kind == 'flexible',
           onTap: () => _pick(kind: 'flexible'),
         ),
-        if (builder.error != null) ...[const SizedBox(height: 14), Notice(builder.error!, danger: true)],
-        if (_kind == 'complete' && _audience == null) ...[const SizedBox(height: 14), const Notice('Choose adult or growing patient.')],
+        if (builder.error != null) ...[
+          const SizedBox(height: 14),
+          Notice(builder.error!, danger: true),
+        ],
+        if (_kind == 'complete' && _audience == null) ...[
+          const SizedBox(height: 14),
+          const Notice('Choose adult or growing patient.'),
+        ],
       ],
     );
   }
 }
 
 class _Choice extends StatelessWidget {
-  const _Choice({super.key, required this.title, required this.text, required this.selected, required this.onTap, this.compact = false});
+  const _Choice({
+    super.key,
+    required this.title,
+    required this.text,
+    required this.selected,
+    required this.onTap,
+    this.compact = false,
+  });
 
   final String title;
   final String text;
@@ -109,7 +129,9 @@ class _Choice extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+              selected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
               color: selected ? p.accent : p.secondary,
             ),
             const SizedBox(width: 12),
@@ -117,7 +139,13 @@ class _Choice extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontWeight: FontWeight.w700, fontSize: compact ? 15 : 17)),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: compact ? 15 : 17,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(text, style: TextStyle(color: p.secondary)),
                 ],

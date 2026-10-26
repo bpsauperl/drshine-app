@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 
 import '../../state/order_builder.dart';
 import '../../theme.dart';
@@ -30,11 +31,29 @@ class SubmitStep extends StatelessWidget {
       padding: const EdgeInsets.all(Brand.gutter),
       children: [
         StepHeading(
-          title: sent ? 'Sent for planning.' : (missing.isEmpty ? 'Ready when you are.' : 'Almost there.'),
-          subtitle: sent ? 'The plan comes back in Stella.' : 'Check the summary, confirm, and send.',
+          title: sent
+              ? 'Sent for planning.'
+              : (missing.isEmpty ? 'Ready when you are.' : 'Almost there.'),
+          subtitle: sent
+              ? 'The plan comes back in Stella.'
+              : 'Check the summary, confirm, and send.',
         ),
-        if (order.priceLines.isNotEmpty || order.totalCents != null)
+        if (order.totalCents != null) ...[
+          Text(
+            sent ? 'Ordered' : 'Due now',
+            style: KitType.eyebrow(color: context.kit.accentText),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            formatEuros(order.totalCents),
+            key: const Key('total'),
+            style: KitType.display(76, color: context.kit.ink),
+          ),
+          const SizedBox(height: 14),
+        ],
+        if (order.priceLines.isNotEmpty)
           Tile(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
             child: Column(
               children: [
                 for (final line in order.priceLines)
@@ -47,30 +66,34 @@ class SubmitStep extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(line.label, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Text(
+                                line.label,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                               if ((line.detail ?? '').isNotEmpty)
-                                Text(line.detail!, style: TextStyle(color: p.secondary, fontSize: 13)),
+                                Text(
+                                  line.detail!,
+                                  style: TextStyle(
+                                    color: p.secondary,
+                                    fontSize: 13,
+                                  ),
+                                ),
                             ],
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(formatEuros(line.amountCents)),
+                        Text(
+                          formatEuros(line.amountCents),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: [FontFeature.tabularFigures()],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                if (order.totalCents != null) ...[
-                  const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
-                  Row(
-                    children: [
-                      const Expanded(child: Text('Total', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17))),
-                      Text(
-                        formatEuros(order.totalCents),
-                        key: const Key('total'),
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20, letterSpacing: -0.4),
-                      ),
-                    ],
-                  ),
-                ],
               ],
             ),
           ),
@@ -80,13 +103,20 @@ class SubmitStep extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 6),
             child: Column(
               children: [
-                for (final item in missing)
+                for (final (step, text) in _byStep(missing))
                   ListTile(
                     dense: true,
-                    leading: Icon(Icons.radio_button_unchecked, size: 20, color: p.accent),
-                    title: Text(item.text),
-                    trailing: Text(item.step.label, style: TextStyle(color: p.secondary)),
-                    onTap: () => builder.goTo(item.step),
+                    leading: Icon(
+                      Icons.radio_button_unchecked,
+                      size: 20,
+                      color: p.accent,
+                    ),
+                    title: Text(text),
+                    trailing: Text(
+                      step.label,
+                      style: TextStyle(color: p.secondary),
+                    ),
+                    onTap: () => builder.goTo(step),
                   ),
               ],
             ),
@@ -105,24 +135,40 @@ class SubmitStep extends StatelessWidget {
             const SizedBox(height: 10),
           ],
         ],
-        if (builder.error != null) ...[const SizedBox(height: 6), Notice(builder.error!, danger: true)],
+        if (builder.error != null) ...[
+          const SizedBox(height: 6),
+          Notice(builder.error!, danger: true),
+        ],
         const SizedBox(height: 14),
         if (!sent) ...[
           if (!builder.canSend) ...[
-            const Notice("Only a dentist can send. It's ready for them in drShine.", icon: Icons.lock_outline),
+            const Notice(
+              "Only a dentist can send. It's ready for them in drShine.",
+              icon: Icons.lock_outline,
+            ),
             const SizedBox(height: 12),
           ],
-          FilledButton(
+          Text(
+            'Saved with the order: who confirmed, when, and the terms version.',
+            textAlign: TextAlign.center,
+            style: KitType.label(color: p.secondary).copyWith(fontSize: 12),
+          ),
+          const SizedBox(height: 10),
+          KitSlideToConfirm(
             key: const Key('send'),
-            onPressed: builder.canSubmit ? _send : null,
-            child: builder.busy
-                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                : const Text('Send for planning'),
+            label: 'Slide to send for planning',
+            enabled: builder.canSubmit,
+            busy: builder.busy,
+            onConfirmed: _send,
           ),
           if (builder.canSend && missing.isEmpty && !builder.allAttested)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: Text('Tick every card to send.', textAlign: TextAlign.center, style: TextStyle(color: p.secondary)),
+              child: Text(
+                'Tick every card to send.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: p.secondary),
+              ),
             ),
         ],
         const SizedBox(height: 24),
@@ -131,8 +177,35 @@ class SubmitStep extends StatelessWidget {
   }
 }
 
+/// One line per step: the item itself, or "12 photos missing" when there are many.
+List<(BuilderStep, String)> _byStep(List<MissingItem> missing) {
+  final steps = <BuilderStep, List<String>>{};
+  for (final item in missing) {
+    steps.putIfAbsent(item.step, () => []).add(item.text);
+  }
+  return [
+    for (final MapEntry(key: step, value: texts) in steps.entries)
+      (
+        step,
+        texts.length == 1
+            ? texts.single
+            : '${texts.length} ${switch (step) {
+                BuilderStep.photos => 'photos',
+                BuilderStep.scans => 'scans',
+                _ => 'items',
+              }} missing',
+      ),
+  ];
+}
+
 class _AttestationCard extends StatelessWidget {
-  const _AttestationCard({super.key, required this.title, required this.text, required this.ticked, required this.onTap});
+  const _AttestationCard({
+    super.key,
+    required this.title,
+    required this.text,
+    required this.ticked,
+    required this.onTap,
+  });
 
   final String title;
   final String text;
@@ -146,7 +219,7 @@ class _AttestationCard extends StatelessWidget {
       checked: ticked,
       child: Tile(
         onTap: onTap,
-        border: ticked ? p.accent : null,
+        border: null,
         padding: const EdgeInsets.all(16),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,17 +230,29 @@ class _AttestationCard extends StatelessWidget {
               height: 24,
               decoration: BoxDecoration(
                 color: ticked ? p.accentFill : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: ticked ? p.accentFill : p.secondary, width: 1.6),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: ticked ? p.accentFill : p.line,
+                  width: 1.6,
+                ),
               ),
-              child: ticked ? const Icon(Icons.check_rounded, size: 18, color: Colors.white) : null,
+              child: ticked
+                  ? const Icon(
+                      Icons.check_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   if (text.isNotEmpty) ...[
                     const SizedBox(height: 3),
                     Text(text, style: TextStyle(color: p.secondary)),

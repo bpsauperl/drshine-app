@@ -18,7 +18,8 @@ const List<String> patientCountries = [
 ];
 
 /// Opens the "New patient" form. Returns the created patient, or null.
-Future<Patient?> showNewPatientSheet(BuildContext context) => showModalBottomSheet<Patient>(
+Future<Patient?> showNewPatientSheet(BuildContext context) =>
+    showModalBottomSheet<Patient>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
@@ -73,7 +74,9 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
 
   Future<void> _save() async {
     if (_first.text.trim().isEmpty || _last.text.trim().isEmpty) {
-      setState(() => _error = const ApiException(422, 'Add the first and last name.'));
+      setState(
+        () => _error = const ApiException(422, 'Add the first and last name.'),
+      );
       return;
     }
     setState(() {
@@ -81,15 +84,17 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
       _error = null;
     });
     try {
-      final patient = await AppScope.read(context).api.createPatient(NewPatient(
-            firstName: _first.text.trim(),
-            lastName: _last.text.trim(),
-            birthDate: _iso(_birthDate),
-            gender: _gender,
-            email: _email.text.trim(),
-            phone: _phone.text.trim(),
-            country: _country,
-          ));
+      final patient = await AppScope.read(context).api.createPatient(
+        NewPatient(
+          firstName: _first.text.trim(),
+          lastName: _last.text.trim(),
+          birthDate: _iso(_birthDate),
+          gender: _gender,
+          email: _email.text.trim(),
+          phone: _phone.text.trim(),
+          country: _country,
+        ),
+      );
       if (mounted) {
         Navigator.of(context).pop(patient);
       }
@@ -111,11 +116,19 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(Brand.gutter, 0, Brand.gutter, Brand.gutter),
+        padding: const EdgeInsets.fromLTRB(
+          Brand.gutter,
+          0,
+          Brand.gutter,
+          Brand.gutter,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('New patient', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              'New patient',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 18),
             TextField(
               controller: _first,
@@ -135,10 +148,17 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
               borderRadius: BorderRadius.circular(14),
               onTap: _pickDate,
               child: InputDecorator(
-                decoration: field('Date of birth', 'birth_date').copyWith(suffixIcon: const Icon(Icons.event_outlined)),
+                decoration: field(
+                  'Date of birth',
+                  'birth_date',
+                ).copyWith(suffixIcon: const Icon(Icons.event_outlined)),
                 child: Text(
-                  _birthDate == null ? 'Optional' : '${_birthDate!.day}. ${_birthDate!.month}. ${_birthDate!.year}',
-                  style: TextStyle(color: _birthDate == null ? p.secondary : p.ink),
+                  _birthDate == null
+                      ? 'Optional'
+                      : '${_birthDate!.day}. ${_birthDate!.month}. ${_birthDate!.year}',
+                  style: TextStyle(
+                    color: _birthDate == null ? p.secondary : p.ink,
+                  ),
                 ),
               ),
             ),
@@ -175,7 +195,10 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
               initialValue: _country,
               decoration: field('Country', 'country'),
               borderRadius: BorderRadius.circular(14),
-              items: [for (final c in patientCountries) DropdownMenuItem(value: c, child: Text(c))],
+              items: [
+                for (final c in patientCountries)
+                  DropdownMenuItem(value: c, child: Text(c)),
+              ],
               onChanged: (v) => setState(() => _country = v ?? _country),
             ),
             if (_error != null && _error!.errors.isEmpty) ...[
@@ -186,7 +209,11 @@ class _NewPatientSheetState extends State<NewPatientSheet> {
             FilledButton(
               onPressed: _busy ? null : _save,
               child: _busy
-                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4))
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4),
+                    )
                   : const Text('Add patient'),
             ),
           ],

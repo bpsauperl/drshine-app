@@ -16,7 +16,12 @@ class ScansStep extends StatelessWidget {
   Future<void> _import(BuildContext context, HubScan scan) async {
     final ok = await builder.importScan(scan.id);
     if (context.mounted) {
-      showMessage(context, ok ? 'Scan imported.' : (builder.error ?? "The scan couldn't be imported."));
+      showMessage(
+        context,
+        ok
+            ? 'Scan imported.'
+            : (builder.error ?? "The scan couldn't be imported."),
+      );
     }
   }
 
@@ -46,7 +51,10 @@ class ScansStep extends StatelessWidget {
               ],
             ),
           ),
-          for (final text in builder.missingFor(BuilderStep.scans).where((t) => t.contains('CBCT'))) ...[
+          for (final text
+              in builder
+                  .missingFor(BuilderStep.scans)
+                  .where((t) => t.contains('CBCT'))) ...[
             const SizedBox(height: 10),
             Notice(text),
           ],
@@ -59,21 +67,34 @@ class ScansStep extends StatelessWidget {
             ),
           ),
           if (builder.loadingScans && inbox == null)
-            const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
+            )
           else if (inbox == null)
             const SizedBox.shrink()
           else if (!inbox.connected)
-            const Notice('Scan Hub isn\'t connected for your clinic yet. Connect it on drshine web.', icon: Icons.link_off)
+            const Notice(
+              'Scan Hub isn\'t connected for your clinic yet. Connect it on drshine web.',
+              icon: Icons.link_off,
+            )
           else if (inbox.error != null)
             Notice(inbox.error!, danger: true)
           else if (inbox.scans.isEmpty)
-            Tile(child: Text('No scans for this patient in Scan Hub yet.', style: TextStyle(color: p.secondary)))
+            Tile(
+              child: Text(
+                'No scans for this patient in Scan Hub yet.',
+                style: TextStyle(color: p.secondary),
+              ),
+            )
           else
             for (final scan in inbox.scans) ...[
               _HubScanCard(
                 scan: scan,
                 importing: builder.importingScan == scan.id,
-                onImport: builder.busy || !builder.order.draft ? null : () => _import(context, scan),
+                onImport: builder.busy || !builder.order.draft
+                    ? null
+                    : () => _import(context, scan),
               ),
               const SizedBox(height: 10),
             ],
@@ -101,15 +122,29 @@ class _ScanSlotRow extends StatelessWidget {
     final has = slot.file != null;
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      leading: Icon(has ? Icons.check_circle : Icons.radio_button_unchecked, color: has ? p.accent : p.secondary),
-      title: Text(slot.label, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(has ? slot.file!.name : 'Not added yet', maxLines: 1, overflow: TextOverflow.ellipsis),
+      leading: Icon(
+        has ? Icons.check_circle : Icons.radio_button_unchecked,
+        color: has ? p.accent : p.secondary,
+      ),
+      title: Text(
+        slot.label,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        has ? slot.file!.name : 'Not added yet',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 }
 
 class _HubScanCard extends StatelessWidget {
-  const _HubScanCard({required this.scan, required this.importing, this.onImport});
+  const _HubScanCard({
+    required this.scan,
+    required this.importing,
+    this.onImport,
+  });
 
   final HubScan scan;
   final bool importing;
@@ -118,14 +153,19 @@ class _HubScanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = Palette.of(context);
-    final jaws = scan.jaws.map((j) => j == 'upper' ? 'Upper' : (j == 'lower' ? 'Lower' : j)).join(' + ');
+    final jaws = scan.jaws
+        .map((j) => j == 'upper' ? 'Upper' : (j == 'lower' ? 'Lower' : j))
+        .join(' + ');
     return Tile(
       child: Row(
         children: [
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(color: p.accentSoft, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+              color: p.accentSoft,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: Icon(Icons.view_in_ar_outlined, color: p.accent),
           ),
           const SizedBox(width: 12),
@@ -133,10 +173,16 @@ class _HubScanCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(scan.source.isEmpty ? 'Scan' : scan.source, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  scan.source.isEmpty ? 'Scan' : scan.source,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 2),
                 Text(
-                  [if (jaws.isNotEmpty) jaws, if (scan.takenAt != null) formatDate(scan.takenAt)].join(' · '),
+                  [
+                    if (jaws.isNotEmpty) jaws,
+                    if (scan.takenAt != null) formatDate(scan.takenAt),
+                  ].join(' · '),
                   style: TextStyle(color: p.secondary, fontSize: 13),
                 ),
               ],
@@ -149,7 +195,11 @@ class _HubScanCard extends StatelessWidget {
               onPressed: importing ? null : onImport,
               style: FilledButton.styleFrom(minimumSize: const Size(96, 40)),
               child: importing
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Import'),
             ),
           ),

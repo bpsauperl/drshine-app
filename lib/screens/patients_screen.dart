@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 
 import '../api/api_client.dart';
 import '../theme.dart';
@@ -45,7 +46,8 @@ class _PatientsScreenState extends State<PatientsScreen> {
       _error = null;
     });
     try {
-      final patients = await AppScope.read(context).api.patients(query: _search.text);
+      final patients = await AppScope.read(context).api
+          .patients(query: _search.text);
       if (mounted && request == _request) {
         setState(() => _patients = patients);
       }
@@ -74,7 +76,11 @@ class _PatientsScreenState extends State<PatientsScreen> {
   }
 
   Future<void> _open(Patient patient) async {
-    await Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PatientScreen(patientId: patient.id)));
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PatientScreen(patientId: patient.id),
+      ),
+    );
     if (mounted) {
       unawaited(_load());
     }
@@ -82,112 +88,170 @@ class _PatientsScreenState extends State<PatientsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
+    final k = context.kit;
     final user = AppScope.of(context).user;
     final patients = _patients;
 
     return Scaffold(
-      appBar: AppBar(
-        centerTitle: false,
-        title: const Wordmark(size: 24),
-        actions: [
-          IconButton(
-            tooltip: 'Settings',
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen())),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        key: const Key('new-patient'),
-        onPressed: _newPatient,
-        backgroundColor: p.accentFill,
-        foregroundColor: Colors.white,
-        elevation: 1,
-        icon: const Icon(Icons.add),
-        label: const Text('New patient', style: TextStyle(fontWeight: FontWeight.w600)),
-      ),
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(Brand.gutter, 8, Brand.gutter, 12),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    PageTitle('Patients', subtitle: user?.clinic?.name),
-                    const SizedBox(height: 18),
-                    TextField(
-                      controller: _search,
-                      onChanged: _onSearch,
-                      textInputAction: TextInputAction.search,
-                      decoration: InputDecoration(
-                        hintText: 'Search by name or ID',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _search.text.isEmpty
-                            ? null
-                            : IconButton(
-                                tooltip: 'Clear',
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  _search.clear();
-                                  _onSearch('');
-                                },
-                              ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_error != null && patients == null)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: CenteredMessage(
-                  icon: Icons.cloud_off_outlined,
-                  title: "Couldn't load patients",
-                  text: _error,
-                  action: OutlinedButton(onPressed: _load, child: const Text('Try again')),
-                ),
-              )
-            else if (patients == null)
-              const SliverFillRemaining(hasScrollBody: false, child: Center(child: CircularProgressIndicator()))
-            else if (patients.isEmpty)
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: CenteredMessage(
-                  icon: Icons.people_outline,
-                  title: _search.text.isEmpty ? 'No patients yet' : 'No one found',
-                  text: _search.text.isEmpty ? 'Add your first patient to start an order.' : 'Try another name or ID.',
-                ),
-              )
-            else
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(Brand.gutter, 0, Brand.gutter, 100),
+                padding: const EdgeInsets.fromLTRB(
+                  Brand.gutter,
+                  10,
+                  Brand.gutter,
+                  14,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (_loading) const LinearProgressIndicator(minHeight: 2),
-                      if (_error != null) ...[Notice(_error!, danger: true), const SizedBox(height: 10)],
-                      Tile(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            for (var i = 0; i < patients.length; i++) ...[
-                              if (i > 0) const Divider(indent: 72),
-                              _PatientRow(patient: patients[i], onTap: () => _open(patients[i])),
-                            ],
-                          ],
+                      Row(
+                        children: [
+                          const Wordmark(size: 20),
+                          const Spacer(),
+                          KitRoundButton(
+                            icon: Icons.settings_outlined,
+                            label: 'Settings',
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SettingsScreen(),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          KitRoundButton(
+                            key: const Key('new-patient'),
+                            icon: Icons.add_rounded,
+                            label: 'New patient',
+                            onPressed: _newPatient,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      if (user?.clinic?.name != null) ...[
+                        Text(
+                          user!.clinic!.name,
+                          style: KitType.eyebrow(color: k.accentText),
+                        ),
+                        const SizedBox(height: 6),
+                      ],
+                      const PageTitle('Patients'),
+                      const SizedBox(height: 18),
+                      TextField(
+                        controller: _search,
+                        onChanged: _onSearch,
+                        textInputAction: TextInputAction.search,
+                        decoration: InputDecoration(
+                          hintText: 'Name or ID',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Clear',
+                                  icon: const Icon(Icons.close_rounded),
+                                  onPressed: () {
+                                    _search.clear();
+                                    _onSearch('');
+                                  },
+                                ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-          ],
+              if (_error != null && patients == null)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: CenteredMessage(
+                    icon: Icons.cloud_off_outlined,
+                    title: "Couldn't load patients",
+                    text: _error,
+                    action: SizedBox(
+                      width: 200,
+                      child: KitButton.secondary(
+                        label: 'Try again',
+                        onPressed: _load,
+                      ),
+                    ),
+                  ),
+                )
+              else if (patients == null)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (patients.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: CenteredMessage(
+                    icon: Icons.people_outline,
+                    title: _search.text.isEmpty
+                        ? 'No patients yet'
+                        : 'No one found',
+                    text: _search.text.isEmpty
+                        ? 'Add your first patient to start an order.'
+                        : 'Try another name or ID.',
+                    action: _search.text.isEmpty
+                        ? SizedBox(
+                            width: 220,
+                            child: KitButton(
+                              label: 'New patient',
+                              icon: Icons.add_rounded,
+                              onPressed: _newPatient,
+                            ),
+                          )
+                        : null,
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(
+                    Brand.gutter,
+                    0,
+                    Brand.gutter,
+                    40,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (_loading)
+                          const LinearProgressIndicator(minHeight: 2),
+                        if (_error != null) ...[
+                          Notice(_error!, danger: true),
+                          const SizedBox(height: 10),
+                        ],
+                        KitListGroup(
+                          title: _search.text.isEmpty ? 'Recent' : 'Found',
+                          children: [
+                            for (final patient in patients)
+                              _PatientRow(
+                                patient: patient,
+                                onTap: () => _open(patient),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -202,36 +266,15 @@ class _PatientRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
-    return InkWell(
+    return KitListRow(
+      leading: InitialsAvatar(patient.initials, size: 38),
+      title: patient.name,
+      detail: [
+        patient.code,
+        if (patient.doctor != null) patient.doctor!.name,
+      ].join(' · '),
+      state: patient.statusLabel.isEmpty ? null : patient.statusLabel,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            InitialsAvatar(patient.initials),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(patient.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                  const SizedBox(height: 2),
-                  Text(
-                    [patient.code, if (patient.doctor != null) patient.doctor!.name].join(' · '),
-                    style: TextStyle(color: p.secondary, fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            if (patient.statusLabel.isNotEmpty) Pill(patient.statusLabel),
-            Icon(Icons.chevron_right, color: p.secondary),
-          ],
-        ),
-      ),
     );
   }
 }

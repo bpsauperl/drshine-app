@@ -16,9 +16,9 @@ enum BuilderStep {
 
   /// The API step keys this app step covers (`scans` = impressions + CBCT).
   List<String> get apiKeys => switch (this) {
-        BuilderStep.scans => const ['impressions', 'cbct'],
-        _ => [name],
-      };
+    BuilderStep.scans => const ['impressions', 'cbct'],
+    _ => [name],
+  };
 }
 
 /// One missing item, with the step it belongs to.
@@ -34,9 +34,12 @@ class MissingItem {
 /// change the order. The server stays the source of truth: every change
 /// answers with the full order, which replaces ours.
 class OrderBuilder extends ChangeNotifier {
-  OrderBuilder({required this.api, required Order order, required this.userCanSend})
-      : _order = order,
-        rxDraft = order.rx {
+  OrderBuilder({
+    required this.api,
+    required Order order,
+    required this.userCanSend,
+  }) : _order = order,
+       rxDraft = order.rx {
     current = firstOpenStep;
   }
 
@@ -80,21 +83,24 @@ class OrderBuilder extends ChangeNotifier {
   // ---------------------------------------------------------------- steps
 
   List<BuilderStep> get steps => [
-        if (order.planChoice.asks) BuilderStep.plan,
-        BuilderStep.photos,
-        BuilderStep.scans,
-        BuilderStep.rx,
-        BuilderStep.submit,
-      ];
+    if (order.planChoice.asks) BuilderStep.plan,
+    BuilderStep.photos,
+    BuilderStep.scans,
+    BuilderStep.rx,
+    BuilderStep.submit,
+  ];
 
   int get currentIndex => steps.indexOf(current);
 
-  BuilderStep get firstOpenStep =>
-      steps.firstWhere((step) => step != BuilderStep.submit && !isComplete(step), orElse: () => BuilderStep.submit);
+  BuilderStep get firstOpenStep => steps.firstWhere(
+    (step) => step != BuilderStep.submit && !isComplete(step),
+    orElse: () => BuilderStep.submit,
+  );
 
   bool isComplete(BuilderStep step) {
     if (step == BuilderStep.submit) {
-      return order.submittedAt != null || (order.step('submit')?.complete ?? false);
+      return order.submittedAt != null ||
+          (order.step('submit')?.complete ?? false);
     }
     final known = step.apiKeys.map(order.step).whereType<OrderStep>().toList();
     if (known.isNotEmpty) {
@@ -104,7 +110,9 @@ class OrderBuilder extends ChangeNotifier {
       BuilderStep.plan => order.planChoice.isChosen,
       BuilderStep.photos => takenRequiredPhotos == requiredPhotos,
       BuilderStep.scans => order.scans.every((scan) => scan.file != null),
-      BuilderStep.rx => (order.rx.planningPartner ?? '').isNotEmpty && (order.rx.arches ?? '').isNotEmpty,
+      BuilderStep.rx =>
+        (order.rx.planningPartner ?? '').isNotEmpty &&
+            (order.rx.arches ?? '').isNotEmpty,
       BuilderStep.submit => false,
     };
   }
@@ -121,7 +129,8 @@ class OrderBuilder extends ChangeNotifier {
 
   int get requiredPhotos => order.photos.where((p) => p.required).length;
 
-  int get takenRequiredPhotos => order.photos.where((p) => p.required && p.isTaken).length;
+  int get takenRequiredPhotos =>
+      order.photos.where((p) => p.required && p.isTaken).length;
 
   /// "11 of 12".
   String get photoCountLabel => '$takenRequiredPhotos of $requiredPhotos';
@@ -145,13 +154,14 @@ class OrderBuilder extends ChangeNotifier {
     return [
       for (final step in steps)
         if (step != BuilderStep.submit)
-          for (final key in step.apiKeys) ...?source[key]?.map((text) => MissingItem(step, text)),
+          for (final key in step.apiKeys)
+            ...?source[key]?.map((text) => MissingItem(step, text)),
     ];
   }
 
   List<String> missingFor(BuilderStep step) => [
-        for (final key in step.apiKeys) ...?order.missing[key],
-      ];
+    for (final key in step.apiKeys) ...?order.missing[key],
+  ];
 
   // --------------------------------------------------------- attestations
 
@@ -164,12 +174,19 @@ class OrderBuilder extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get allAttested => order.attestations.every((card) => ticked.contains(card.id));
+  bool get allAttested =>
+      order.attestations.every((card) => ticked.contains(card.id));
 
   /// Only the treating doctor may send.
   bool get canSend => userCanSend && order.canSend;
 
-  bool get canSubmit => canSend && order.ready && allAttested && missing.isEmpty && !busy && order.draft;
+  bool get canSubmit =>
+      canSend &&
+      order.ready &&
+      allAttested &&
+      missing.isEmpty &&
+      !busy &&
+      order.draft;
 
   // ------------------------------------------------------------ navigation
 
@@ -185,9 +202,11 @@ class OrderBuilder extends ChangeNotifier {
     }
   }
 
-  BuilderStep? get nextStep => currentIndex + 1 < steps.length ? steps[currentIndex + 1] : null;
+  BuilderStep? get nextStep =>
+      currentIndex + 1 < steps.length ? steps[currentIndex + 1] : null;
 
-  BuilderStep? get previousStep => currentIndex > 0 ? steps[currentIndex - 1] : null;
+  BuilderStep? get previousStep =>
+      currentIndex > 0 ? steps[currentIndex - 1] : null;
 
   // --------------------------------------------------------------- calls
 
@@ -197,7 +216,9 @@ class OrderBuilder extends ChangeNotifier {
     if (!rxDirty) {
       rxDraft = fresh.rx;
     }
-    ticked.removeWhere((id) => !fresh.attestations.any((card) => card.id == id));
+    ticked.removeWhere(
+      (id) => !fresh.attestations.any((card) => card.id == id),
+    );
     if (!steps.contains(current)) {
       current = steps.first;
     }
@@ -223,7 +244,13 @@ class OrderBuilder extends ChangeNotifier {
   }
 
   Future<bool> choosePlan({required String kind, String? audience}) async {
-    final fresh = await _run(() => api.choosePlan(order.id, kind: kind, audience: kind == 'complete' ? audience : null));
+    final fresh = await _run(
+      () => api.choosePlan(
+        order.id,
+        kind: kind,
+        audience: kind == 'complete' ? audience : null,
+      ),
+    );
     if (fresh != null) {
       _apply(fresh);
       notifyListeners();
@@ -232,13 +259,23 @@ class OrderBuilder extends ChangeNotifier {
   }
 
   /// Uploads a photo into [slot] (replacing what was there) and reloads the order.
-  Future<bool> uploadPhoto(String slot, Uint8List bytes, {String filename = 'photo.jpg'}) async {
+  Future<bool> uploadPhoto(
+    String slot,
+    Uint8List bytes, {
+    String filename = 'photo.jpg',
+  }) async {
     uploading.add(slot);
     localPhotos[slot] = bytes;
     slotErrors.remove(slot);
     notifyListeners();
     try {
-      final file = await api.uploadFile(order.id, kind: 'photo', slot: slot, bytes: bytes, filename: filename);
+      final file = await api.uploadFile(
+        order.id,
+        kind: 'photo',
+        slot: slot,
+        bytes: bytes,
+        filename: filename,
+      );
       thumbnails[file.id] = bytes;
       _apply(await api.order(order.id));
       return true;
@@ -290,7 +327,11 @@ class OrderBuilder extends ChangeNotifier {
     if (current.contains(phrase)) {
       return;
     }
-    editRx(rxDraft.copyWith(prescription: current.isEmpty ? phrase : '$current\n$phrase'));
+    editRx(
+      rxDraft.copyWith(
+        prescription: current.isEmpty ? phrase : '$current\n$phrase',
+      ),
+    );
   }
 
   void toggleConcern(String value) {
@@ -346,7 +387,12 @@ class OrderBuilder extends ChangeNotifier {
     submitMissing = null;
     notifyListeners();
     try {
-      _apply(await api.submit(order.id, order.attestations.map((c) => c.id).where(ticked.contains).toList()));
+      _apply(
+        await api.submit(
+          order.id,
+          order.attestations.map((c) => c.id).where(ticked.contains).toList(),
+        ),
+      );
       sent = true;
       return true;
     } on ApiException catch (e) {

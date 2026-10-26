@@ -27,7 +27,9 @@ class DrShineApp extends StatelessWidget {
           builder: (context, _) => switch (state.status) {
             SessionStatus.starting => const _Splash(),
             SessionStatus.signedOut => const SignInScreen(),
-            SessionStatus.signedIn => const PatientsScreen(key: ValueKey('patients')),
+            SessionStatus.signedIn => const PatientsScreen(
+              key: ValueKey('patients'),
+            ),
           },
         ),
       ),
@@ -39,5 +41,6 @@ class _Splash extends StatelessWidget {
   const _Splash();
 
   @override
-  Widget build(BuildContext context) => const Scaffold(body: Center(child: Wordmark(size: 40)));
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: Wordmark(size: 40)));
 }

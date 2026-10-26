@@ -20,7 +20,20 @@ String formatEuros(int? cents) {
   return '${negative ? '−' : ''}€$grouped$cent';
 }
 
-const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
 
 /// `26 Oct 2026`.
 String formatDate(DateTime? date) {

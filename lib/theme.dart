@@ -30,7 +30,8 @@ class Brand {
 class Palette {
   const Palette._(this.brightness);
 
-  factory Palette.of(BuildContext context) => Palette._(Theme.of(context).brightness);
+  factory Palette.of(BuildContext context) =>
+      Palette._(Theme.of(context).brightness);
 
   final Brightness brightness;
 
@@ -48,4 +49,5 @@ class Palette {
 }
 
 /// The app theme comes from the shared Shine kit (Direction C), in indigo.
-ThemeData buildTheme(Brightness brightness) => kitTheme(KitAccent.drShine, brightness);
+ThemeData buildTheme(Brightness brightness) =>
+    kitTheme(KitAccent.drShine, brightness);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 
 import '../../theme.dart';
 import '../../widgets/common.dart';
@@ -17,24 +18,40 @@ class DoneScreen extends StatelessWidget {
           child: Column(
             children: [
               const Spacer(),
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(color: p.accentSoft, shape: BoxShape.circle),
-                child: Icon(Icons.check_rounded, size: 48, color: p.accent),
+              const KitArchHero(
+                height: 200,
+                semanticLabel: 'The aligner, on its way to planning',
               ),
-              const SizedBox(height: 24),
-              Text('Sent for planning.', style: Theme.of(context).textTheme.headlineMedium, textAlign: TextAlign.center),
               const SizedBox(height: 8),
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: p.accentFill,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  size: 32,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Sent for planning.',
+                style: KitType.display(40, color: context.kit.ink),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
               Text(
                 'The plan comes back in Stella.',
-                style: TextStyle(color: p.secondary, fontSize: 17),
+                style: KitType.body(color: p.secondary),
                 textAlign: TextAlign.center,
               ),
               const Spacer(),
-              FilledButton(
+              KitButton(
+                label: 'Back to the patient',
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Back to the patient'),
               ),
               const SizedBox(height: 8),
               const Wordmark(size: 18),

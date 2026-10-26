@@ -10,16 +10,20 @@ String _str(Object? value) => value == null ? '' : '$value';
 String? _strOrNull(Object? value) => value == null ? null : '$value';
 bool _bool(Object? value) => value == true || value == 1 || value == '1';
 int? _intOrNull(Object? value) => switch (value) {
-      int v => v,
-      num v => v.round(),
-      String v => int.tryParse(v),
-      _ => null,
-    };
-Json _map(Object? value) => value is Map ? value.cast<String, dynamic>() : <String, dynamic>{};
-List<Json> _list(Object? value) =>
-    value is List ? value.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList() : <Json>[];
-List<String> _strings(Object? value) => value is List ? value.map((v) => '$v').toList() : <String>[];
-DateTime? _date(Object? value) => value == null ? null : DateTime.tryParse('$value');
+  int v => v,
+  num v => v.round(),
+  String v => int.tryParse(v),
+  _ => null,
+};
+Json _map(Object? value) =>
+    value is Map ? value.cast<String, dynamic>() : <String, dynamic>{};
+List<Json> _list(Object? value) => value is List
+    ? value.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList()
+    : <Json>[];
+List<String> _strings(Object? value) =>
+    value is List ? value.map((v) => '$v').toList() : <String>[];
+DateTime? _date(Object? value) =>
+    value == null ? null : DateTime.tryParse('$value');
 
 /// A small `{id, name}` reference (clinic, doctor).
 class Ref {
@@ -49,14 +53,14 @@ class User {
   });
 
   factory User.fromJson(Json json) => User(
-        id: _str(json['id']),
-        name: _str(json['name']),
-        email: _str(json['email']),
-        role: _str(json['role']),
-        roleLabel: _str(json['role_label']),
-        canSend: _bool(json['can_send']),
-        clinic: Ref.maybe(json['clinic']),
-      );
+    id: _str(json['id']),
+    name: _str(json['name']),
+    email: _str(json['email']),
+    role: _str(json['role']),
+    roleLabel: _str(json['role_label']),
+    canSend: _bool(json['can_send']),
+    clinic: Ref.maybe(json['clinic']),
+  );
 
   final String id;
   final String name;
@@ -75,7 +79,10 @@ class LoginResult {
 
   factory LoginResult.fromJson(Json json) => _bool(json['two_factor'])
       ? LoginResult(challenge: _str(json['challenge']))
-      : LoginResult(token: _str(json['token']), user: User.fromJson(_map(json['user'])));
+      : LoginResult(
+          token: _str(json['token']),
+          user: User.fromJson(_map(json['user'])),
+        );
 
   final String? token;
   final User? user;
@@ -100,18 +107,18 @@ class Patient {
   });
 
   factory Patient.fromJson(Json json) => Patient(
-        id: _str(json['id']),
-        code: _str(json['code']),
-        name: _str(json['name']),
-        firstName: _str(json['first_name']),
-        lastName: _str(json['last_name']),
-        birthDate: _strOrNull(json['birth_date']),
-        status: _str(json['status']),
-        statusLabel: _str(json['status_label']),
-        doctor: Ref.maybe(json['doctor']),
-        clinic: Ref.maybe(json['clinic']),
-        isMinor: _bool(json['is_minor']),
-      );
+    id: _str(json['id']),
+    code: _str(json['code']),
+    name: _str(json['name']),
+    firstName: _str(json['first_name']),
+    lastName: _str(json['last_name']),
+    birthDate: _strOrNull(json['birth_date']),
+    status: _str(json['status']),
+    statusLabel: _str(json['status_label']),
+    doctor: Ref.maybe(json['doctor']),
+    clinic: Ref.maybe(json['clinic']),
+    isMinor: _bool(json['is_minor']),
+  );
 
   final String id;
   final String code;
@@ -126,7 +133,10 @@ class Patient {
   final bool isMinor;
 
   String get initials {
-    final letters = [firstName, lastName].where((p) => p.isNotEmpty).map((p) => p[0].toUpperCase()).join();
+    final letters = [
+      firstName,
+      lastName,
+    ].where((p) => p.isNotEmpty).map((p) => p[0].toUpperCase()).join();
     return letters.isEmpty && name.isNotEmpty ? name[0].toUpperCase() : letters;
   }
 }
@@ -156,14 +166,14 @@ class NewPatient {
   final String? phone;
 
   Json toJson() => {
-        'first_name': firstName,
-        'last_name': lastName,
-        'gender': gender,
-        'country': country,
-        if (birthDate != null && birthDate!.isNotEmpty) 'birth_date': birthDate,
-        if (email != null && email!.isNotEmpty) 'email': email,
-        if (phone != null && phone!.isNotEmpty) 'phone': phone,
-      };
+    'first_name': firstName,
+    'last_name': lastName,
+    'gender': gender,
+    'country': country,
+    if (birthDate != null && birthDate!.isNotEmpty) 'birth_date': birthDate,
+    if (email != null && email!.isNotEmpty) 'email': email,
+    if (phone != null && phone!.isNotEmpty) 'phone': phone,
+  };
 }
 
 class OrderSummary {
@@ -182,18 +192,18 @@ class OrderSummary {
   });
 
   factory OrderSummary.fromJson(Json json) => OrderSummary(
-        id: _str(json['id']),
-        reference: _str(json['reference']),
-        type: _str(json['type']),
-        typeLabel: _str(json['type_label']),
-        series: _intOrNull(json['series']),
-        status: _str(json['status']),
-        statusLabel: _str(json['status_label']),
-        journeyLabel: _str(json['journey_label']),
-        createdAt: _date(json['created_at']),
-        submittedAt: _date(json['submitted_at']),
-        draft: _bool(json['draft']),
-      );
+    id: _str(json['id']),
+    reference: _str(json['reference']),
+    type: _str(json['type']),
+    typeLabel: _str(json['type_label']),
+    series: _intOrNull(json['series']),
+    status: _str(json['status']),
+    statusLabel: _str(json['status_label']),
+    journeyLabel: _str(json['journey_label']),
+    createdAt: _date(json['created_at']),
+    submittedAt: _date(json['submitted_at']),
+    draft: _bool(json['draft']),
+  );
 
   final String id;
   final String reference;
@@ -214,23 +224,28 @@ class PatientDetail {
   const PatientDetail({required this.patient, required this.orders});
 
   factory PatientDetail.fromJson(Json json) => PatientDetail(
-        patient: Patient.fromJson(_map(json['patient'])),
-        orders: _list(json['orders']).map(OrderSummary.fromJson).toList(),
-      );
+    patient: Patient.fromJson(_map(json['patient'])),
+    orders: _list(json['orders']).map(OrderSummary.fromJson).toList(),
+  );
 
   final Patient patient;
   final List<OrderSummary> orders;
 }
 
 class OrderStep {
-  const OrderStep({required this.key, required this.label, required this.complete, required this.status});
+  const OrderStep({
+    required this.key,
+    required this.label,
+    required this.complete,
+    required this.status,
+  });
 
   factory OrderStep.fromJson(Json json) => OrderStep(
-        key: _str(json['key']),
-        label: _str(json['label']),
-        complete: _bool(json['complete']),
-        status: _str(json['status']),
-      );
+    key: _str(json['key']),
+    label: _str(json['label']),
+    complete: _bool(json['complete']),
+    status: _str(json['status']),
+  );
 
   final String key;
   final String label;
@@ -242,10 +257,10 @@ class PlanChoice {
   const PlanChoice({required this.asks, this.kind, this.audience});
 
   factory PlanChoice.fromJson(Json json) => PlanChoice(
-        asks: _bool(json['asks']),
-        kind: _strOrNull(json['kind']),
-        audience: _strOrNull(json['audience']),
-      );
+    asks: _bool(json['asks']),
+    kind: _strOrNull(json['kind']),
+    audience: _strOrNull(json['audience']),
+  );
 
   final bool asks;
 
@@ -255,20 +270,27 @@ class PlanChoice {
   /// `adult` or `growing` for Complete; null for Flexible.
   final String? audience;
 
-  bool get isChosen => kind == 'flexible' || (kind == 'complete' && audience != null);
+  bool get isChosen =>
+      kind == 'flexible' || (kind == 'complete' && audience != null);
 }
 
 class OrderFile {
-  const OrderFile({required this.id, required this.name, required this.url, this.slot});
+  const OrderFile({
+    required this.id,
+    required this.name,
+    required this.url,
+    this.slot,
+  });
 
   factory OrderFile.fromJson(Json json) => OrderFile(
-        id: _str(json['id']),
-        name: _str(json['name']),
-        url: _str(json['url']),
-        slot: _strOrNull(json['slot']),
-      );
+    id: _str(json['id']),
+    name: _str(json['name']),
+    url: _str(json['url']),
+    slot: _strOrNull(json['slot']),
+  );
 
-  static OrderFile? maybe(Object? json) => json is Map ? OrderFile.fromJson(_map(json)) : null;
+  static OrderFile? maybe(Object? json) =>
+      json is Map ? OrderFile.fromJson(_map(json)) : null;
 
   final String id;
   final String name;
@@ -287,13 +309,13 @@ class PhotoSlot {
   });
 
   factory PhotoSlot.fromJson(Json json) => PhotoSlot(
-        slot: _str(json['slot']),
-        label: _str(json['label']),
-        group: _str(json['group']),
-        required: _bool(json['required']),
-        guide: _str(json['guide']),
-        file: OrderFile.maybe(json['file']),
-      );
+    slot: _str(json['slot']),
+    label: _str(json['label']),
+    group: _str(json['group']),
+    required: _bool(json['required']),
+    guide: _str(json['guide']),
+    file: OrderFile.maybe(json['file']),
+  );
 
   final String slot;
   final String label;
@@ -310,8 +332,11 @@ class PhotoSlot {
 class ScanSlot {
   const ScanSlot({required this.slot, required this.label, this.file});
 
-  factory ScanSlot.fromJson(Json json) =>
-      ScanSlot(slot: _str(json['slot']), label: _str(json['label']), file: OrderFile.maybe(json['file']));
+  factory ScanSlot.fromJson(Json json) => ScanSlot(
+    slot: _str(json['slot']),
+    label: _str(json['label']),
+    file: OrderFile.maybe(json['file']),
+  );
 
   final String slot;
   final String label;
@@ -319,15 +344,21 @@ class ScanSlot {
 }
 
 class Rx {
-  const Rx({this.planningPartner, this.arches, this.concerns = const [], this.treatmentGoal, this.prescription});
+  const Rx({
+    this.planningPartner,
+    this.arches,
+    this.concerns = const [],
+    this.treatmentGoal,
+    this.prescription,
+  });
 
   factory Rx.fromJson(Json json) => Rx(
-        planningPartner: _strOrNull(json['planning_partner']),
-        arches: _strOrNull(json['arches']),
-        concerns: _strings(json['concerns']),
-        treatmentGoal: _strOrNull(json['treatment_goal']),
-        prescription: _strOrNull(json['prescription']),
-      );
+    planningPartner: _strOrNull(json['planning_partner']),
+    arches: _strOrNull(json['arches']),
+    concerns: _strings(json['concerns']),
+    treatmentGoal: _strOrNull(json['treatment_goal']),
+    prescription: _strOrNull(json['prescription']),
+  );
 
   final String? planningPartner;
   final String? arches;
@@ -336,12 +367,12 @@ class Rx {
   final String? prescription;
 
   Json toJson() => {
-        'planning_partner': planningPartner,
-        'arches': arches,
-        'concerns': concerns,
-        'treatment_goal': treatmentGoal,
-        'prescription': prescription,
-      };
+    'planning_partner': planningPartner,
+    'arches': arches,
+    'concerns': concerns,
+    'treatment_goal': treatmentGoal,
+    'prescription': prescription,
+  };
 
   Rx copyWith({
     String? planningPartner,
@@ -349,24 +380,23 @@ class Rx {
     List<String>? concerns,
     String? treatmentGoal,
     String? prescription,
-  }) =>
-      Rx(
-        planningPartner: planningPartner ?? this.planningPartner,
-        arches: arches ?? this.arches,
-        concerns: concerns ?? this.concerns,
-        treatmentGoal: treatmentGoal ?? this.treatmentGoal,
-        prescription: prescription ?? this.prescription,
-      );
+  }) => Rx(
+    planningPartner: planningPartner ?? this.planningPartner,
+    arches: arches ?? this.arches,
+    concerns: concerns ?? this.concerns,
+    treatmentGoal: treatmentGoal ?? this.treatmentGoal,
+    prescription: prescription ?? this.prescription,
+  );
 }
 
 class Option {
   const Option({required this.value, required this.label, this.description});
 
   factory Option.fromJson(Json json) => Option(
-        value: _str(json['value']),
-        label: _str(json['label']),
-        description: _strOrNull(json['description']),
-      );
+    value: _str(json['value']),
+    label: _str(json['label']),
+    description: _strOrNull(json['description']),
+  );
 
   final String value;
   final String label;
@@ -374,13 +404,17 @@ class Option {
 }
 
 class OrderOptions {
-  const OrderOptions({this.partners = const [], this.arches = const [], this.concerns = const []});
+  const OrderOptions({
+    this.partners = const [],
+    this.arches = const [],
+    this.concerns = const [],
+  });
 
   factory OrderOptions.fromJson(Json json) => OrderOptions(
-        partners: _list(json['partners']).map(Option.fromJson).toList(),
-        arches: _list(json['arches']).map(Option.fromJson).toList(),
-        concerns: _list(json['concerns']).map(Option.fromJson).toList(),
-      );
+    partners: _list(json['partners']).map(Option.fromJson).toList(),
+    arches: _list(json['arches']).map(Option.fromJson).toList(),
+    concerns: _list(json['concerns']).map(Option.fromJson).toList(),
+  );
 
   final List<Option> partners;
   final List<Option> arches;
@@ -391,10 +425,10 @@ class PriceLine {
   const PriceLine({required this.label, this.detail, this.amountCents});
 
   factory PriceLine.fromJson(Json json) => PriceLine(
-        label: _str(json['label']),
-        detail: _strOrNull(json['detail']),
-        amountCents: _intOrNull(json['amount_cents']),
-      );
+    label: _str(json['label']),
+    detail: _strOrNull(json['detail']),
+    amountCents: _intOrNull(json['amount_cents']),
+  );
 
   final String label;
   final String? detail;
@@ -402,10 +436,17 @@ class PriceLine {
 }
 
 class Attestation {
-  const Attestation({required this.id, required this.title, required this.text});
+  const Attestation({
+    required this.id,
+    required this.title,
+    required this.text,
+  });
 
-  factory Attestation.fromJson(Json json) =>
-      Attestation(id: _str(json['id']), title: _str(json['title']), text: _str(json['text']));
+  factory Attestation.fromJson(Json json) => Attestation(
+    id: _str(json['id']),
+    title: _str(json['title']),
+    text: _str(json['text']),
+  );
 
   final String id;
   final String title;
@@ -462,7 +503,9 @@ class Order {
       ready: _bool(json['ready']),
       priceLines: _list(json['price_lines']).map(PriceLine.fromJson).toList(),
       totalCents: _intOrNull(json['total_cents']),
-      attestations: _list(json['attestations']).map(Attestation.fromJson).toList(),
+      attestations: _list(json['attestations'])
+          .map(Attestation.fromJson)
+          .toList(),
       submittedAt: _date(json['submitted_at']),
     );
   }
@@ -502,16 +545,23 @@ class Order {
 
 /// One scan waiting in the clinic's Scan Hub inbox.
 class HubScan {
-  const HubScan({required this.id, required this.source, required this.jaws, this.patientName, this.takenAt, this.match});
+  const HubScan({
+    required this.id,
+    required this.source,
+    required this.jaws,
+    this.patientName,
+    this.takenAt,
+    this.match,
+  });
 
   factory HubScan.fromJson(Json json) => HubScan(
-        id: _str(json['id']),
-        source: _str(json['source']),
-        patientName: _strOrNull(json['patient_name']),
-        takenAt: _date(json['taken_at']),
-        jaws: _strings(json['jaws']),
-        match: _strOrNull(json['match']),
-      );
+    id: _str(json['id']),
+    source: _str(json['source']),
+    patientName: _strOrNull(json['patient_name']),
+    takenAt: _date(json['taken_at']),
+    jaws: _strings(json['jaws']),
+    match: _strOrNull(json['match']),
+  );
 
   final String id;
   final String source;
@@ -525,10 +575,10 @@ class ScanInbox {
   const ScanInbox({required this.connected, required this.scans, this.error});
 
   factory ScanInbox.fromJson(Json json) => ScanInbox(
-        connected: _bool(json['connected']),
-        scans: _list(json['scans']).map(HubScan.fromJson).toList(),
-        error: _strOrNull(json['error']),
-      );
+    connected: _bool(json['connected']),
+    scans: _list(json['scans']).map(HubScan.fromJson).toList(),
+    error: _strOrNull(json['error']),
+  );
 
   final bool connected;
   final List<HubScan> scans;

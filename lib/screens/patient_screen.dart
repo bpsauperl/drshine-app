@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 
 import '../api/api_client.dart';
 import '../theme.dart';
@@ -44,7 +45,8 @@ class _PatientScreenState extends State<PatientScreen> {
   Future<void> _newOrder() async {
     setState(() => _starting = true);
     try {
-      final order = await AppScope.read(context).api.createAlignersOrder(widget.patientId);
+      final order = await AppScope.read(context).api
+          .createAlignersOrder(widget.patientId);
       if (mounted) {
         await _openOrder(order.id, initial: order);
       }
@@ -62,7 +64,11 @@ class _PatientScreenState extends State<PatientScreen> {
   Future<void> _openOrder(String id, {Order? initial}) async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => OrderBuilderScreen(orderId: id, initial: initial, patientName: _detail?.patient.name),
+        builder: (_) => OrderBuilderScreen(
+          orderId: id,
+          initial: initial,
+          patientName: _detail?.patient.name,
+        ),
       ),
     );
     if (mounted) {
@@ -73,99 +79,192 @@ class _PatientScreenState extends State<PatientScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
-    final p = Palette.of(context);
+    final k = context.kit;
+    if (detail == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: _error == null
+            ? const Center(child: CircularProgressIndicator())
+            : CenteredMessage(
+                icon: Icons.cloud_off_outlined,
+                title: "Couldn't open the patient",
+                text: _error,
+                action: SizedBox(
+                  width: 200,
+                  child: KitButton.secondary(
+                    label: 'Try again',
+                    onPressed: _load,
+                  ),
+                ),
+              ),
+      );
+    }
+
+    final patient = detail.patient;
+    OrderSummary? draft;
+    for (final order in detail.orders) {
+      if (order.isAligners && order.draft) {
+        draft = order;
+        break;
+      }
+    }
+    final openDraft = draft;
 
     return Scaffold(
-      appBar: AppBar(title: Text(detail?.patient.code ?? '')),
-      body: detail == null
-          ? (_error == null
-              ? const Center(child: CircularProgressIndicator())
-              : CenteredMessage(
-                  icon: Icons.cloud_off_outlined,
-                  title: "Couldn't open the patient",
-                  text: _error,
-                  action: OutlinedButton(onPressed: _load, child: const Text('Try again')),
-                ))
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(Brand.gutter, 4, Brand.gutter, 40),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              Brand.gutter,
+              10,
+              Brand.gutter,
+              120,
+            ),
+            children: [
+              Row(
                 children: [
-                  _Summary(patient: detail.patient),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    key: const Key('new-order'),
-                    onPressed: _starting ? null : _newOrder,
-                    icon: _starting
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(Icons.add),
-                    label: const Text('New Aligners order'),
+                  KitRoundButton(
+                    icon: Icons.arrow_back_rounded,
+                    label: 'Patients',
+                    onPressed: () => Navigator.of(context).maybePop(),
                   ),
-                  SectionLabel('Orders', trailing: Text('${detail.orders.length}', style: TextStyle(color: p.secondary))),
-                  if (detail.orders.isEmpty)
-                    Tile(
-                      child: Text('No orders yet. Ready when you are.', style: TextStyle(color: p.secondary)),
-                    )
-                  else
-                    for (final order in detail.orders) ...[
-                      _OrderCard(
-                        order: order,
-                        onOpen: order.isAligners ? () => _openOrder(order.id) : null,
-                      ),
-                      const SizedBox(height: 10),
-                    ],
+                  const Expanded(child: Center(child: Wordmark(size: 17))),
+                  const SizedBox(width: KitSize.touch),
                 ],
               ),
-            ),
+              const SizedBox(height: 18),
+              Semantics(
+                header: true,
+                child: Text(
+                  patient.name,
+                  style: KitType.display(32, color: k.ink),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: k.accentText,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      [
+                        if (patient.statusLabel.isNotEmpty) patient.statusLabel,
+                        patient.code,
+                      ].join(' · '),
+                      style: KitType.label(color: k.secondary),
+                    ),
+                  ),
+                ],
+              ),
+              KitArchHero(
+                height: 190,
+                semanticLabel:
+                    '${patient.firstName.isEmpty ? 'The patient' : patient.firstName}\'s arch',
+              ),
+              _Facts(patient: patient),
+              const SizedBox(height: 22),
+              if (detail.orders.isEmpty)
+                KitTile(
+                  child: Text(
+                    'No orders yet. Ready when you are.',
+                    style: KitType.body(color: k.secondary),
+                  ),
+                )
+              else
+                KitListGroup(
+                  title: 'Orders',
+                  children: [
+                    for (final order in detail.orders)
+                      _OrderRow(
+                        order: order,
+                        onOpen: order.isAligners
+                            ? () => _openOrder(order.id)
+                            : null,
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(Brand.gutter, 8, Brand.gutter, 16),
+        child: openDraft == null
+            ? KitButton(
+                key: const Key('new-order'),
+                label: 'New Aligners order',
+                icon: Icons.add_rounded,
+                busy: _starting,
+                onPressed: _newOrder,
+              )
+            : KitButton(
+                key: const Key('continue-order'),
+                label: 'Continue series ${openDraft.series ?? ''}'.trim(),
+                trailingIcon: Icons.arrow_forward_rounded,
+                onPressed: () => _openOrder(openDraft.id),
+              ),
+      ),
     );
   }
 }
 
-class _Summary extends StatelessWidget {
-  const _Summary({required this.patient});
+/// Born, doctor and clinic, side by side.
+class _Facts extends StatelessWidget {
+  const _Facts({required this.patient});
 
   final Patient patient;
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
+    final k = context.kit;
     final facts = <(String, String)>[
-      ('ID', patient.code),
       if ((patient.birthDate ?? '').isNotEmpty)
-        ('Born', formatIsoDate(patient.birthDate) + (patient.isMinor ? ' · minor' : '')),
+        (
+          'Born',
+          formatIsoDate(patient.birthDate) +
+              (patient.isMinor ? ' · minor' : ''),
+        ),
       if (patient.doctor != null) ('Doctor', patient.doctor!.name),
       if (patient.clinic != null) ('Clinic', patient.clinic!.name),
     ];
-    return Tile(
-      padding: const EdgeInsets.all(20),
-      child: Column(
+    if (facts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return KitTile(
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              InitialsAvatar(patient.initials, size: 56),
-              const SizedBox(width: 14),
-              Expanded(
+          for (final (label, value) in facts)
+            Expanded(
+              child: Semantics(
+                label: '$label: $value',
+                excludeSemantics: true,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(patient.name, style: Theme.of(context).textTheme.headlineSmall),
-                    const SizedBox(height: 6),
-                    if (patient.statusLabel.isNotEmpty) Pill(patient.statusLabel, strong: true),
+                    Text(label, style: KitType.label(color: k.secondary)),
+                    const SizedBox(height: 4),
+                    Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: k.ink,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          for (final (label, value) in facts)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  SizedBox(width: 70, child: Text(label, style: TextStyle(color: p.secondary))),
-                  Expanded(child: Text(value)),
-                ],
               ),
             ),
         ],
@@ -174,51 +273,36 @@ class _Summary extends StatelessWidget {
   }
 }
 
-class _OrderCard extends StatelessWidget {
-  const _OrderCard({required this.order, this.onOpen});
+class _OrderRow extends StatelessWidget {
+  const _OrderRow({required this.order, this.onOpen});
 
   final OrderSummary order;
   final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
-    final p = Palette.of(context);
     final title = [
       order.typeLabel.isEmpty ? 'Order' : order.typeLabel,
       if (order.series != null) 'series ${order.series}',
     ].join(' · ');
     final when = order.submittedAt != null
         ? 'Sent ${formatDate(order.submittedAt)}'
-        : (order.createdAt != null ? 'Started ${formatDate(order.createdAt)}' : '');
-
-    return Tile(
+        : (order.createdAt != null
+              ? 'Started ${formatDate(order.createdAt)}'
+              : '');
+    return KitListRow(
+      icon: order.isAligners
+          ? Icons.layers_outlined
+          : Icons.inventory_2_outlined,
+      title: title,
+      detail: [
+        order.reference,
+        if (order.journeyLabel.isNotEmpty) order.journeyLabel,
+        if (when.isNotEmpty) when,
+      ].join(' · '),
+      state: order.draft ? 'Draft' : order.statusLabel,
+      highlight: order.draft,
       onTap: onOpen,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
-              Pill(order.draft ? 'Draft' : order.statusLabel, strong: order.draft),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            [order.reference, if (order.journeyLabel.isNotEmpty) order.journeyLabel, if (when.isNotEmpty) when].join(' · '),
-            style: TextStyle(color: p.secondary, fontSize: 13),
-          ),
-          if (order.draft && onOpen != null) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Icon(Icons.play_arrow_rounded, color: p.accent, size: 20),
-                const SizedBox(width: 4),
-                Text('Continue the draft', style: TextStyle(color: p.accent, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

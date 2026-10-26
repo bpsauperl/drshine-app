@@ -53,8 +53,16 @@ class AppState extends ChangeNotifier {
   }
 
   /// Signs in. Returns true when the server asks for the two-step code next.
-  Future<bool> signIn({required String email, required String password, required String device}) async {
-    final result = await api.login(email: email.trim(), password: password, device: device);
+  Future<bool> signIn({
+    required String email,
+    required String password,
+    required String device,
+  }) async {
+    final result = await api.login(
+      email: email.trim(),
+      password: password,
+      device: device,
+    );
     lastEmail = email.trim();
     await store.writeLastEmail(lastEmail!);
     if (result.needsTwoFactor) {
@@ -71,7 +79,12 @@ class AppState extends ChangeNotifier {
     if (challenge == null) {
       throw const ApiException(422, 'Sign in again to get a new code.');
     }
-    await _signedIn(await api.loginTwoFactor(challenge: challenge, code: code.replaceAll(' ', '')));
+    await _signedIn(
+      await api.loginTwoFactor(
+        challenge: challenge,
+        code: code.replaceAll(' ', ''),
+      ),
+    );
   }
 
   void cancelTwoFactor() {

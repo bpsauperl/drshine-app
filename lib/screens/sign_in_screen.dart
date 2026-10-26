@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 import 'package:flutter/services.dart';
 
 import '../api/api_client.dart';
@@ -80,10 +81,15 @@ class _SignInScreenState extends State<SignInScreen> {
     }
     final state = AppScope.read(context);
     await _go(() async {
-      if (_server.text.trim().isNotEmpty && _server.text.trim() != state.serverUrl) {
+      if (_server.text.trim().isNotEmpty &&
+          _server.text.trim() != state.serverUrl) {
         await state.setServer(_server.text);
       }
-      final needsCode = await state.signIn(email: _email.text, password: _password.text, device: deviceName());
+      final needsCode = await state.signIn(
+        email: _email.text,
+        password: _password.text,
+        device: deviceName(),
+      );
       if (needsCode) {
         _password.clear();
         _code.clear();
@@ -93,7 +99,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _confirm() async {
     if (_code.text.trim().length < 6) {
-      setState(() => _error = 'Enter the 6-digit code from your authenticator app.');
+      setState(
+        () => _error = 'Enter the 6-digit code from your authenticator app.',
+      );
       return;
     }
     final state = AppScope.read(context);
@@ -104,7 +112,6 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final p = Palette.of(context);
-    final t = Theme.of(context).textTheme;
     final askingCode = state.twoFactorChallenge != null;
 
     return Scaffold(
@@ -118,30 +125,47 @@ class _SignInScreenState extends State<SignInScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const SizedBox(height: 24),
-                    const Center(child: Wordmark(size: 40)),
-                    const SizedBox(height: 10),
-                    Text(
-                      askingCode ? 'One more step.' : 'Welcome back.',
-                      textAlign: TextAlign.center,
-                      style: t.headlineSmall,
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Wordmark(size: 22),
                     ),
-                    const SizedBox(height: 6),
+                    // The arch only where there is room (not on small screens or over the keyboard).
+                    if (MediaQuery.sizeOf(context).height -
+                            MediaQuery.viewInsetsOf(context).bottom >=
+                        720)
+                      const KitArchHero(height: 190)
+                    else
+                      const SizedBox(height: 28),
+                    Text(
+                      'For Shine clinics',
+                      style: KitType.eyebrow(color: context.kit.accentText),
+                    ),
+                    const SizedBox(height: 8),
+                    Semantics(
+                      header: true,
+                      child: Text(
+                        askingCode ? 'One more step.' : 'Welcome back.',
+                        style: KitType.display(44, color: context.kit.ink),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                     Text(
                       askingCode
                           ? 'Enter the 6-digit code from your authenticator app, or a recovery code.'
                           : 'Sign in with your drShine account.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: p.secondary),
+                      style: KitType.body(color: p.secondary),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 28),
                     if (!askingCode) ...[
                       TextField(
                         key: const Key('email'),
                         controller: _email,
                         enabled: !_busy,
                         keyboardType: TextInputType.emailAddress,
-                        autofillHints: const [AutofillHints.username, AutofillHints.email],
+                        autofillHints: const [
+                          AutofillHints.username,
+                          AutofillHints.email,
+                        ],
                         autocorrect: false,
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(labelText: 'Email'),
@@ -158,9 +182,16 @@ class _SignInScreenState extends State<SignInScreen> {
                         decoration: InputDecoration(
                           labelText: 'Password',
                           suffixIcon: IconButton(
-                            tooltip: _hidePassword ? 'Show password' : 'Hide password',
-                            icon: Icon(_hidePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                            onPressed: () => setState(() => _hidePassword = !_hidePassword),
+                            tooltip: _hidePassword
+                                ? 'Show password'
+                                : 'Hide password',
+                            icon: Icon(
+                              _hidePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                            ),
+                            onPressed: () =>
+                                setState(() => _hidePassword = !_hidePassword),
                           ),
                         ),
                       ),
@@ -173,9 +204,15 @@ class _SignInScreenState extends State<SignInScreen> {
                         keyboardType: TextInputType.visiblePassword,
                         autofillHints: const [AutofillHints.oneTimeCode],
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 26, letterSpacing: 8, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 26,
+                          letterSpacing: 8,
+                          fontWeight: FontWeight.w600,
+                        ),
                         inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9-]')),
+                          FilteringTextInputFormatter.allow(
+                            RegExp(r'[A-Za-z0-9-]'),
+                          ),
                           LengthLimitingTextInputFormatter(21),
                         ],
                         onSubmitted: (_) => _confirm(),
@@ -186,13 +223,12 @@ class _SignInScreenState extends State<SignInScreen> {
                       Notice(_error!, danger: true, icon: Icons.error_outline),
                     ],
                     const SizedBox(height: 20),
-                    FilledButton(
+                    KitButton(
                       key: const Key('sign-in'),
-                      onPressed: _busy ? null : (askingCode ? _confirm : _signIn),
-                      child: _busy
-                          ? const SizedBox(
-                              width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
-                          : Text(askingCode ? 'Confirm' : 'Sign in'),
+                      label: askingCode ? 'Confirm' : 'Sign in',
+                      trailingIcon: Icons.arrow_forward_rounded,
+                      busy: _busy,
+                      onPressed: askingCode ? _confirm : _signIn,
                     ),
                     if (askingCode)
                       TextButton(
@@ -218,7 +254,10 @@ class _SignInScreenState extends State<SignInScreen> {
         TextButton.icon(
           key: const Key('server-toggle'),
           onPressed: () => setState(() => _showServer = !_showServer),
-          icon: Icon(_showServer ? Icons.expand_less : Icons.dns_outlined, size: 18),
+          icon: Icon(
+            _showServer ? Icons.expand_less : Icons.dns_outlined,
+            size: 18,
+          ),
           label: const Text('Server'),
           style: TextButton.styleFrom(foregroundColor: p.secondary),
         ),
@@ -233,7 +272,9 @@ class _SignInScreenState extends State<SignInScreen> {
             decoration: const InputDecoration(labelText: 'Server address'),
           ),
           TextButton(
-            onPressed: _busy ? null : () => setState(() => _server.text = defaultServerUrl),
+            onPressed: _busy
+                ? null
+                : () => setState(() => _server.text = defaultServerUrl),
             child: const Text('Use the default server'),
           ),
         ],

@@ -6,30 +6,60 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fixtures.dart';
 
-OrderBuilder builderFor(Map<String, dynamic> json, {bool userCanSend = true, FakeApi? api}) =>
-    OrderBuilder(api: api ?? FakeApi(order: json), order: Order.fromJson(json), userCanSend: userCanSend);
+OrderBuilder builderFor(
+  Map<String, dynamic> json, {
+  bool userCanSend = true,
+  FakeApi? api,
+}) => OrderBuilder(
+  api: api ?? FakeApi(order: json),
+  order: Order.fromJson(json),
+  userCanSend: userCanSend,
+);
 
 void main() {
   group('steps', () {
     test('Plan shows only when the server asks for it', () {
-      expect(builderFor(orderJson(asksPlan: true)).steps.first, BuilderStep.plan);
       expect(
-        builderFor(orderJson(asksPlan: false)).steps,
-        [BuilderStep.photos, BuilderStep.scans, BuilderStep.rx, BuilderStep.submit],
+        builderFor(orderJson(asksPlan: true)).steps.first,
+        BuilderStep.plan,
       );
+      expect(builderFor(orderJson(asksPlan: false)).steps, [
+        BuilderStep.photos,
+        BuilderStep.scans,
+        BuilderStep.rx,
+        BuilderStep.submit,
+      ]);
     });
 
     test('a new order starts on the first open step', () {
       expect(builderFor(orderJson()).current, BuilderStep.plan);
-      expect(builderFor(orderJson(planKind: 'flexible')).current, BuilderStep.photos);
       expect(
-        builderFor(orderJson(planKind: 'flexible', taken: requiredSlots(), scans: true, rx: true)).current,
+        builderFor(orderJson(planKind: 'flexible')).current,
+        BuilderStep.photos,
+      );
+      expect(
+        builderFor(
+          orderJson(
+            planKind: 'flexible',
+            taken: requiredSlots(),
+            scans: true,
+            rx: true,
+          ),
+        ).current,
         BuilderStep.submit,
       );
     });
 
     test('completion follows the server, scans cover impressions and CBCT', () {
-      final b = builderFor(orderJson(planKind: 'complete', audience: 'adult', taken: requiredSlots(), scans: false, rx: true));
+      final b = builderFor(
+        orderJson(
+          planKind: 'complete',
+          audience: 'adult',
+          taken: requiredSlots(),
+          scans: false,
+          rx: true,
+        ),
+      );
       expect(b.isComplete(BuilderStep.plan), isTrue);
       expect(b.isComplete(BuilderStep.photos), isTrue);
       expect(b.isComplete(BuilderStep.scans), isFalse);
@@ -38,37 +68,53 @@ void main() {
     });
 
     test('completion is derived locally when the server sends no steps', () {
-      final json = orderJson(planKind: 'complete', taken: {'frontal'})..['steps'] = [];
+      final json = orderJson(planKind: 'complete', taken: {'frontal'})
+        ..['steps'] = [];
       final b = builderFor(json);
-      expect(b.isComplete(BuilderStep.plan), isFalse, reason: 'Complete needs adult or growing');
+      expect(
+        b.isComplete(BuilderStep.plan),
+        isFalse,
+        reason: 'Complete needs adult or growing',
+      );
       expect(b.isComplete(BuilderStep.photos), isFalse);
     });
   });
 
   group('photos', () {
     test('counts the required photos taken', () {
-      final b = builderFor(orderJson(taken: {...requiredSlots().take(11), 'panoramic_xray'}));
+      final b = builderFor(
+        orderJson(taken: {...requiredSlots().take(11), 'panoramic_xray'}),
+      );
       expect(b.requiredPhotos, 12);
       expect(b.takenRequiredPhotos, 11);
       expect(b.photoCountLabel, '11 of 12');
-      expect(b.photoGroups.map((g) => g.key), ['Face photos', 'Intraoral photos', 'X-ray photos', 'Additional photos']);
+      expect(b.photoGroups.map((g) => g.key), [
+        'Face photos',
+        'Intraoral photos',
+        'X-ray photos',
+        'Additional photos',
+      ]);
       expect(b.order.photos, hasLength(18));
     });
 
-    test('an upload marks the slot as uploading, then reloads the order', () async {
-      final api = FakeApi(order: orderJson());
-      final b = builderFor(api.orderData, api: api);
-      api.orderData = orderJson(taken: {'frontal'});
-      final upload = b.uploadPhoto('frontal', Uint8List.fromList([1, 2, 3]));
-      expect(b.uploading, contains('frontal'));
-      expect(await upload, isTrue);
-      expect(b.uploading, isEmpty);
-      expect(api.uploads, ['frontal']);
-      expect(b.takenRequiredPhotos, 1);
-    });
+    test(
+      'an upload marks the slot as uploading, then reloads the order',
+      () async {
+        final api = FakeApi(order: orderJson());
+        final b = builderFor(api.orderData, api: api);
+        api.orderData = orderJson(taken: {'frontal'});
+        final upload = b.uploadPhoto('frontal', Uint8List.fromList([1, 2, 3]));
+        expect(b.uploading, contains('frontal'));
+        expect(await upload, isTrue);
+        expect(b.uploading, isEmpty);
+        expect(api.uploads, ['frontal']);
+        expect(b.takenRequiredPhotos, 1);
+      },
+    );
 
     test('a failed upload keeps the error on the slot', () async {
-      final api = FakeApi()..failNext = const ApiException(422, 'Photos are JPEG or PNG.');
+      final api = FakeApi()
+        ..failNext = const ApiException(422, 'Photos are JPEG or PNG.');
       final b = builderFor(api.orderData, api: api);
       expect(await b.uploadPhoto('frontal', Uint8List(3)), isFalse);
       expect(b.slotErrors['frontal'], 'Photos are JPEG or PNG.');
@@ -78,7 +124,9 @@ void main() {
 
   group('missing', () {
     test('lists what is missing per step, in step order', () {
-      final b = builderFor(orderJson(planKind: 'flexible', taken: requiredSlots()));
+      final b = builderFor(
+        orderJson(planKind: 'flexible', taken: requiredSlots()),
+      );
       expect(b.missing.map((m) => (m.step, m.text)), [
         (BuilderStep.scans, 'Upper jaw scan is missing'),
         (BuilderStep.scans, 'Lower jaw scan is missing'),
@@ -88,13 +136,28 @@ void main() {
     });
 
     test('is empty when the order is ready', () {
-      expect(builderFor(orderJson(planKind: 'flexible', taken: requiredSlots(), scans: true, rx: true)).missing, isEmpty);
+      expect(
+        builderFor(
+          orderJson(
+            planKind: 'flexible',
+            taken: requiredSlots(),
+            scans: true,
+            rx: true,
+          ),
+        ).missing,
+        isEmpty,
+      );
     });
   });
 
   group('attestations and sending', () {
-    Map<String, dynamic> ready({bool canSend = true}) =>
-        orderJson(planKind: 'flexible', taken: requiredSlots(), scans: true, rx: true, canSend: canSend);
+    Map<String, dynamic> ready({bool canSend = true}) => orderJson(
+      planKind: 'flexible',
+      taken: requiredSlots(),
+      scans: true,
+      rx: true,
+      canSend: canSend,
+    );
 
     test('every card must be ticked before sending', () {
       final b = builderFor(ready());
@@ -121,7 +184,9 @@ void main() {
     });
 
     test('a missing item blocks sending', () {
-      final b = builderFor(orderJson(planKind: 'flexible', taken: requiredSlots(), rx: true));
+      final b = builderFor(
+        orderJson(planKind: 'flexible', taken: requiredSlots(), rx: true),
+      );
       for (final id in ['P1', 'P2', 'P3']) {
         b.toggleAttestation(id);
       }
@@ -142,9 +207,13 @@ void main() {
 
     test('a 422 on submit shows what the server says is missing', () async {
       final api = FakeApi(order: ready())
-        ..failNext = const ApiException(422, 'Still needed: scans.', missing: {
-          'impressions': ['Upper jaw scan is missing'],
-        });
+        ..failNext = const ApiException(
+          422,
+          'Still needed: scans.',
+          missing: {
+            'impressions': ['Upper jaw scan is missing'],
+          },
+        );
       final b = builderFor(api.orderData, api: api);
       for (final id in ['P1', 'P2', 'P3']) {
         b.toggleAttestation(id);
@@ -162,7 +231,10 @@ void main() {
       b.addPhrase('Keep the midlines.');
       b.addPhrase('Attachments allowed.');
       b.addPhrase('Keep the midlines.');
-      expect(b.rxDraft.prescription, 'Keep the midlines.\nAttachments allowed.');
+      expect(
+        b.rxDraft.prescription,
+        'Keep the midlines.\nAttachments allowed.',
+      );
       expect(b.rxDirty, isTrue);
     });
 
@@ -170,7 +242,9 @@ void main() {
       final api = FakeApi(order: orderJson(asksPlan: false));
       final b = builderFor(api.orderData, api: api);
       await b.goTo(BuilderStep.rx);
-      b.editRx(b.rxDraft.copyWith(planningPartner: 'shine_planning', arches: 'dual'));
+      b.editRx(
+        b.rxDraft.copyWith(planningPartner: 'shine_planning', arches: 'dual'),
+      );
       b.toggleConcern('crowding');
       await b.goTo(BuilderStep.submit);
       expect(api.savedRx?.planningPartner, 'shine_planning');

@@ -8,9 +8,13 @@ import 'api_client.dart';
 
 /// [ApiClient] over HTTPS with `package:http`.
 class HttpApiClient implements ApiClient {
-  HttpApiClient({String baseUrl = defaultServerUrl, this.token, http.Client? client, this.onUnauthorized})
-      : _baseUrl = normalizeBaseUrl(baseUrl),
-        _client = client ?? http.Client();
+  HttpApiClient({
+    String baseUrl = defaultServerUrl,
+    this.token,
+    http.Client? client,
+    this.onUnauthorized,
+  }) : _baseUrl = normalizeBaseUrl(baseUrl),
+       _client = client ?? http.Client();
 
   final http.Client _client;
   String _baseUrl;
@@ -42,31 +46,50 @@ class HttpApiClient implements ApiClient {
     return url;
   }
 
-  Uri _uri(String path, [Map<String, String>? query]) =>
-      Uri.parse('$_baseUrl/api/app/v1$path').replace(queryParameters: query == null || query.isEmpty ? null : query);
+  Uri _uri(String path, [Map<String, String>? query]) => Uri.parse(
+    '$_baseUrl/api/app/v1$path',
+  ).replace(queryParameters: query == null || query.isEmpty ? null : query);
 
   Map<String, String> _headers({bool json = true}) => {
-        'Accept': 'application/json',
-        if (json) 'Content-Type': 'application/json; charset=utf-8',
-        if (token != null) 'Authorization': 'Bearer $token',
-      };
+    'Accept': 'application/json',
+    if (json) 'Content-Type': 'application/json; charset=utf-8',
+    if (token != null) 'Authorization': 'Bearer $token',
+  };
 
-  Future<Json> _send(String method, String path, {Object? body, Map<String, String>? query}) async {
-    final request = http.Request(method, _uri(path, query))..headers.addAll(_headers());
+  Future<Json> _send(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String>? query,
+  }) async {
+    final request = http.Request(method, _uri(path, query))
+      ..headers.addAll(_headers());
     if (body != null) {
       request.body = jsonEncode(body);
     }
-    final response = await _run(() async => http.Response.fromStream(await _client.send(request)), _timeout);
+    final response = await _run(
+      () async => http.Response.fromStream(await _client.send(request)),
+      _timeout,
+    );
     return _decode(response);
   }
 
-  Future<http.Response> _run(Future<http.Response> Function() call, Duration timeout) async {
+  Future<http.Response> _run(
+    Future<http.Response> Function() call,
+    Duration timeout,
+  ) async {
     try {
       return await call().timeout(timeout);
     } on TimeoutException {
-      throw const ApiException(0, 'The server took too long to answer. Try again.');
+      throw const ApiException(
+        0,
+        'The server took too long to answer. Try again.',
+      );
     } on http.ClientException {
-      throw const ApiException(0, "Can't reach the server. Check the connection and the server address.");
+      throw const ApiException(
+        0,
+        "Can't reach the server. Check the connection and the server address.",
+      );
     }
   }
 
@@ -79,7 +102,9 @@ class HttpApiClient implements ApiClient {
         decoded = null;
       }
     }
-    final json = decoded is Map ? decoded.cast<String, dynamic>() : <String, dynamic>{};
+    final json = decoded is Map
+        ? decoded.cast<String, dynamic>()
+        : <String, dynamic>{};
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json;
     }
@@ -93,12 +118,16 @@ class HttpApiClient implements ApiClient {
     Map<String, List<String>> lists(Object? value) {
       final out = <String, List<String>>{};
       if (value is Map) {
-        value.forEach((key, v) => out['$key'] = v is List ? v.map((e) => '$e').toList() : ['$v']);
+        value.forEach(
+          (key, v) =>
+              out['$key'] = v is List ? v.map((e) => '$e').toList() : ['$v'],
+        );
       }
       return out;
     }
 
-    final message = json['message'] is String && (json['message'] as String).isNotEmpty
+    final message =
+        json['message'] is String && (json['message'] as String).isNotEmpty
         ? json['message'] as String
         : switch (status) {
             401 => 'Please sign in again.',
@@ -109,16 +138,38 @@ class HttpApiClient implements ApiClient {
             429 => 'Too many attempts. Wait a minute and try again.',
             _ => 'Something went wrong on the server ($status). Try again.',
           };
-    return ApiException(status, message, errors: lists(json['errors']), missing: lists(json['missing']));
+    return ApiException(
+      status,
+      message,
+      errors: lists(json['errors']),
+      missing: lists(json['missing']),
+    );
   }
 
   @override
-  Future<LoginResult> login({required String email, required String password, required String device}) async =>
-      LoginResult.fromJson(await _send('POST', '/login', body: {'email': email, 'password': password, 'device': device}));
+  Future<LoginResult> login({
+    required String email,
+    required String password,
+    required String device,
+  }) async => LoginResult.fromJson(
+    await _send(
+      'POST',
+      '/login',
+      body: {'email': email, 'password': password, 'device': device},
+    ),
+  );
 
   @override
-  Future<LoginResult> loginTwoFactor({required String challenge, required String code}) async =>
-      LoginResult.fromJson(await _send('POST', '/login/two-factor', body: {'challenge': challenge, 'code': code}));
+  Future<LoginResult> loginTwoFactor({
+    required String challenge,
+    required String code,
+  }) async => LoginResult.fromJson(
+    await _send(
+      'POST',
+      '/login/two-factor',
+      body: {'challenge': challenge, 'code': code},
+    ),
+  );
 
   @override
   Future<void> logout() async {
@@ -126,32 +177,59 @@ class HttpApiClient implements ApiClient {
   }
 
   @override
-  Future<User> me() async => User.fromJson(_obj((await _send('GET', '/me'))['user']));
+  Future<User> me() async =>
+      User.fromJson(_obj((await _send('GET', '/me'))['user']));
 
   @override
   Future<List<Patient>> patients({String query = ''}) async {
-    final json = await _send('GET', '/patients', query: query.trim().isEmpty ? null : {'q': query.trim()});
+    final json = await _send(
+      'GET',
+      '/patients',
+      query: query.trim().isEmpty ? null : {'q': query.trim()},
+    );
     final data = json['data'];
-    return data is List ? data.whereType<Map>().map((m) => Patient.fromJson(m.cast<String, dynamic>())).toList() : [];
+    return data is List
+        ? data
+              .whereType<Map>()
+              .map((m) => Patient.fromJson(m.cast<String, dynamic>()))
+              .toList()
+        : [];
   }
 
   @override
-  Future<Patient> createPatient(NewPatient patient) async =>
-      Patient.fromJson(_obj((await _send('POST', '/patients', body: patient.toJson()))['patient']));
+  Future<Patient> createPatient(NewPatient patient) async => Patient.fromJson(
+    _obj((await _send('POST', '/patients', body: patient.toJson()))['patient']),
+  );
 
   @override
-  Future<PatientDetail> patient(String id) async => PatientDetail.fromJson(await _send('GET', '/patients/$id'));
+  Future<PatientDetail> patient(String id) async =>
+      PatientDetail.fromJson(await _send('GET', '/patients/$id'));
 
   @override
-  Future<Order> createAlignersOrder(String patientId) async =>
-      _order(await _send('POST', '/orders', body: {'patient_id': patientId, 'type': 'aligner_series'}));
+  Future<Order> createAlignersOrder(String patientId) async => _order(
+    await _send(
+      'POST',
+      '/orders',
+      body: {'patient_id': patientId, 'type': 'aligner_series'},
+    ),
+  );
 
   @override
-  Future<Order> order(String id) async => _order(await _send('GET', '/orders/$id'));
+  Future<Order> order(String id) async =>
+      _order(await _send('GET', '/orders/$id'));
 
   @override
-  Future<Order> choosePlan(String orderId, {required String kind, String? audience}) async =>
-      _order(await _send('PUT', '/orders/$orderId/plan', body: {'kind': kind, 'audience': audience}));
+  Future<Order> choosePlan(
+    String orderId, {
+    required String kind,
+    String? audience,
+  }) async => _order(
+    await _send(
+      'PUT',
+      '/orders/$orderId/plan',
+      body: {'kind': kind, 'audience': audience},
+    ),
+  );
 
   @override
   Future<OrderFile> uploadFile(
@@ -161,12 +239,18 @@ class HttpApiClient implements ApiClient {
     required Uint8List bytes,
     required String filename,
   }) async {
-    final request = http.MultipartRequest('POST', _uri('/orders/$orderId/files'))
-      ..headers.addAll(_headers(json: false))
-      ..fields['kind'] = kind
-      ..fields['slot'] = slot
-      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    final response = await _run(() async => http.Response.fromStream(await _client.send(request)), _uploadTimeout);
+    final request =
+        http.MultipartRequest('POST', _uri('/orders/$orderId/files'))
+          ..headers.addAll(_headers(json: false))
+          ..fields['kind'] = kind
+          ..fields['slot'] = slot
+          ..files.add(
+            http.MultipartFile.fromBytes('file', bytes, filename: filename),
+          );
+    final response = await _run(
+      () async => http.Response.fromStream(await _client.send(request)),
+      _uploadTimeout,
+    );
     return OrderFile.fromJson(_obj(_decode(response)['file']));
   }
 
@@ -178,7 +262,10 @@ class HttpApiClient implements ApiClient {
   @override
   Future<Uint8List> fileBytes(String orderId, String fileId) async {
     final response = await _run(
-      () => _client.get(_uri('/orders/$orderId/files/$fileId'), headers: _headers(json: false)),
+      () => _client.get(
+        _uri('/orders/$orderId/files/$fileId'),
+        headers: _headers(json: false),
+      ),
       _timeout,
     );
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -193,22 +280,28 @@ class HttpApiClient implements ApiClient {
     } on ApiException catch (error) {
       return error;
     }
-    return ApiException(response.statusCode, 'Something went wrong. Try again.');
+    return ApiException(
+      response.statusCode,
+      'Something went wrong. Try again.',
+    );
   }
 
   @override
-  Future<Order> saveRx(String orderId, Rx rx) async => _order(await _send('PUT', '/orders/$orderId/rx', body: rx.toJson()));
+  Future<Order> saveRx(String orderId, Rx rx) async =>
+      _order(await _send('PUT', '/orders/$orderId/rx', body: rx.toJson()));
 
   @override
-  Future<ScanInbox> scans(String orderId) async => ScanInbox.fromJson(await _send('GET', '/orders/$orderId/scans'));
+  Future<ScanInbox> scans(String orderId) async =>
+      ScanInbox.fromJson(await _send('GET', '/orders/$orderId/scans'));
 
   @override
   Future<Order> importScan(String orderId, String scanId) async =>
       _order(await _send('POST', '/orders/$orderId/scans/$scanId/import'));
 
   @override
-  Future<Order> submit(String orderId, List<String> attest) async =>
-      _order(await _send('POST', '/orders/$orderId/submit', body: {'attest': attest}));
+  Future<Order> submit(String orderId, List<String> attest) async => _order(
+    await _send('POST', '/orders/$orderId/submit', body: {'attest': attest}),
+  );
 
   Order _order(Json json) => Order.fromJson(_obj(json['order']));
 
@@ -216,6 +309,9 @@ class HttpApiClient implements ApiClient {
     if (value is Map) {
       return value.cast<String, dynamic>();
     }
-    throw const ApiException(500, 'The server sent an answer the app does not understand.');
+    throw const ApiException(
+      500,
+      'The server sent an answer the app does not understand.',
+    );
   }
 }

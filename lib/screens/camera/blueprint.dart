@@ -48,7 +48,9 @@ Blueprint blueprintFor(String slot, [String guide = '']) {
   return switch (guide) {
     'frontal-smile' || 'face-front-smile' => Blueprint.faceFrontSmile,
     'face-left' || 'profile-left' || 'left-profile' => Blueprint.profileLeft,
-    'face-right' || 'profile-right' || 'right-profile' => Blueprint.profileRight,
+    'face-right' ||
+    'profile-right' ||
+    'right-profile' => Blueprint.profileRight,
     'face-left45' || 'left-45' => Blueprint.threeQuarterLeft,
     'face-right45' || 'right-45' => Blueprint.threeQuarterRight,
     'bite' || 'front-arches' => Blueprint.frontArches,
@@ -70,14 +72,18 @@ String instructionFor(String slot, Blueprint blueprint) {
     Blueprint.faceFront => 'Straight on, lips relaxed, eyes on the line.',
     Blueprint.faceFrontSmile => 'Straight on, a natural full smile.',
     Blueprint.profileLeft || Blueprint.profileRight =>
-      smiling ? 'Side on, smiling, chin level.' : 'Side on, lips relaxed, chin level.',
+      smiling
+          ? 'Side on, smiling, chin level.'
+          : 'Side on, lips relaxed, chin level.',
     Blueprint.threeQuarterLeft || Blueprint.threeQuarterRight =>
       smiling ? 'Head turned 45°, smiling.' : 'Head turned 45°, lips relaxed.',
     Blueprint.frontArches => 'Retractors in, teeth together.',
-    Blueprint.buccalLeft || Blueprint.buccalRight => 'Retractors in, cheek pulled back, teeth together.',
+    Blueprint.buccalLeft || Blueprint.buccalRight =>
+      'Retractors in, cheek pulled back, teeth together.',
     Blueprint.occlusalUpper => 'Mirror in, mouth wide open, whole upper arch.',
     Blueprint.occlusalLower => 'Mirror in, mouth wide open, whole lower arch.',
-    Blueprint.overjet => 'From the side, teeth together, front teeth in the frame.',
+    Blueprint.overjet =>
+      'From the side, teeth together, front teeth in the frame.',
     Blueprint.xray => 'Fill the frame with the X-ray, no glare.',
   };
 }
@@ -87,7 +93,13 @@ String instructionFor(String slot, Blueprint blueprint) {
 /// Every drawing lives in a unit box (0..1 × 0..1) fitted into the middle of
 /// the canvas, so it looks the same on any screen.
 class BlueprintPainter extends CustomPainter {
-  BlueprintPainter(this.blueprint, {this.color = Colors.white, this.opacity = 0.35, this.strokeWidth = 2.2, this.fill = 0.82});
+  BlueprintPainter(
+    this.blueprint, {
+    this.color = Colors.white,
+    this.opacity = 0.35,
+    this.strokeWidth = 2.2,
+    this.fill = 0.82,
+  });
 
   final Blueprint blueprint;
   final Color color;
@@ -99,12 +111,14 @@ class BlueprintPainter extends CustomPainter {
 
   /// The drawing's height / width.
   double get aspect => switch (blueprint) {
-        Blueprint.frontArches || Blueprint.buccalLeft || Blueprint.buccalRight => 0.72,
-        Blueprint.occlusalUpper || Blueprint.occlusalLower => 0.95,
-        Blueprint.overjet => 1.1,
-        Blueprint.xray => 0.7,
-        _ => 1.3,
-      };
+    Blueprint.frontArches ||
+    Blueprint.buccalLeft ||
+    Blueprint.buccalRight => 0.72,
+    Blueprint.occlusalUpper || Blueprint.occlusalLower => 0.95,
+    Blueprint.overjet => 1.1,
+    Blueprint.xray => 0.7,
+    _ => 1.3,
+  };
 
   /// The box the drawing fills on a canvas of [size].
   Rect frameFor(Size size) {
@@ -115,7 +129,11 @@ class BlueprintPainter extends CustomPainter {
       height = maxHeight;
       width = height / aspect;
     }
-    return Rect.fromCenter(center: size.center(Offset.zero), width: width, height: height);
+    return Rect.fromCenter(
+      center: size.center(Offset.zero),
+      width: width,
+      height: height,
+    );
   }
 
   @override
@@ -173,7 +191,10 @@ class BlueprintPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(BlueprintPainter old) =>
-      old.blueprint != blueprint || old.color != color || old.opacity != opacity || old.strokeWidth != strokeWidth;
+      old.blueprint != blueprint ||
+      old.color != color ||
+      old.opacity != opacity ||
+      old.strokeWidth != strokeWidth;
 }
 
 /// The drawings, in unit coordinates. Paths are built in the unit box and
@@ -199,29 +220,31 @@ class _Draw {
   }
 
   void mirrored(void Function() draw) => within(
-        Matrix4.identity()
-          ..translateByDouble(1, 0, 0, 1)
-          ..scaleByDouble(-1, 1, 1, 1),
-        draw,
-      );
+    Matrix4.identity()
+      ..translateByDouble(1, 0, 0, 1)
+      ..scaleByDouble(-1, 1, 1, 1),
+    draw,
+  );
 
   void flipped(void Function() draw) => within(
-        Matrix4.identity()
-          ..translateByDouble(0, 1, 0, 1)
-          ..scaleByDouble(1, -1, 1, 1),
-        draw,
-      );
+    Matrix4.identity()
+      ..translateByDouble(0, 1, 0, 1)
+      ..scaleByDouble(1, -1, 1, 1),
+    draw,
+  );
 
-  void stroke(Path path, [Paint? with_]) => canvas.drawPath(path.transform(matrix.storage), with_ ?? paint);
+  void stroke(Path path, [Paint? with_]) =>
+      canvas.drawPath(path.transform(matrix.storage), with_ ?? paint);
 
   void line(Offset a, Offset b, [Paint? with_]) => stroke(
-        Path()
-          ..moveTo(a.dx, a.dy)
-          ..lineTo(b.dx, b.dy),
-        with_,
-      );
+    Path()
+      ..moveTo(a.dx, a.dy)
+      ..lineTo(b.dx, b.dy),
+    with_,
+  );
 
-  void dashed(Offset a, Offset b, {double dash = 10, double gap = 8}) => dashedPath(
+  void dashed(Offset a, Offset b, {double dash = 10, double gap = 8}) =>
+      dashedPath(
         Path()
           ..moveTo(a.dx, a.dy)
           ..lineTo(b.dx, b.dy),
@@ -231,7 +254,8 @@ class _Draw {
 
   /// Dashes measured in pixels.
   void dashedPath(Path path, {double dash = 10, double gap = 8}) {
-    for (final PathMetric metric in path.transform(matrix.storage).computeMetrics()) {
+    for (final PathMetric metric
+        in path.transform(matrix.storage).computeMetrics()) {
       var distance = 0.0;
       while (distance < metric.length) {
         final end = math.min(distance + dash, metric.length);
@@ -241,8 +265,11 @@ class _Draw {
     }
   }
 
-  void oval(double cx, double cy, double w, double h, [Paint? with_]) =>
-      stroke(Path()..addOval(Rect.fromCenter(center: Offset(cx, cy), width: w, height: h)), with_);
+  void oval(double cx, double cy, double w, double h, [Paint? with_]) => stroke(
+    Path()
+      ..addOval(Rect.fromCenter(center: Offset(cx, cy), width: w, height: h)),
+    with_,
+  );
 
   void tooth(Rect rect, {double round = 0.35}) {
     final r = Radius.elliptical(rect.width * round, rect.height * round * 0.6);
@@ -358,7 +385,14 @@ class _Draw {
         final w = upperW[i];
         final cx = x + side * w / 2;
         final y = _plane(cx);
-        tooth(Rect.fromLTWH(cx - w / 2 + 0.003, y - upperH[i], w - 0.006, upperH[i]));
+        tooth(
+          Rect.fromLTWH(
+            cx - w / 2 + 0.003,
+            y - upperH[i],
+            w - 0.006,
+            upperH[i],
+          ),
+        );
         x += side * w;
       }
       x = 0.5;
@@ -388,13 +422,19 @@ class _Draw {
     var x = 0.1;
     for (var i = 0; i < upperW.length; i++) {
       final y = plane(x + upperW[i] / 2);
-      tooth(Rect.fromLTWH(x + 0.003, y - upperH[i], upperW[i] - 0.006, upperH[i]), round: i >= 4 ? 0.22 : 0.35);
+      tooth(
+        Rect.fromLTWH(x + 0.003, y - upperH[i], upperW[i] - 0.006, upperH[i]),
+        round: i >= 4 ? 0.22 : 0.35,
+      );
       x += upperW[i];
     }
     x = 0.07;
     for (var i = 0; i < lowerW.length; i++) {
       final y = plane(x + lowerW[i] / 2) + 0.012;
-      tooth(Rect.fromLTWH(x + 0.003, y, lowerW[i] - 0.006, lowerH[i]), round: i >= 4 ? 0.22 : 0.35);
+      tooth(
+        Rect.fromLTWH(x + 0.003, y, lowerW[i] - 0.006, lowerH[i]),
+        round: i >= 4 ? 0.22 : 0.35,
+      );
       x += lowerW[i];
     }
   }
@@ -406,17 +446,27 @@ class _Draw {
     final depth = 1 - math.cos(reach);
     Offset at(double t) {
       final theta = t * reach;
-      return Offset(0.5 + 0.41 * math.sin(theta), 0.1 + 0.8 * (1 - math.cos(theta)) / depth);
+      return Offset(
+        0.5 + 0.41 * math.sin(theta),
+        0.1 + 0.8 * (1 - math.cos(theta)) / depth,
+      );
     }
 
     // Sample the arch to place the teeth along its length.
     const samples = 240;
-    final points = [for (var i = 0; i <= samples; i++) at(-1 + 2 * i / samples)];
+    final points = [
+      for (var i = 0; i <= samples; i++) at(-1 + 2 * i / samples),
+    ];
     final lengths = <double>[0];
     for (var i = 1; i < points.length; i++) {
       final a = points[i - 1];
       final b = points[i];
-      lengths.add(lengths.last + math.sqrt(math.pow(b.dx - a.dx, 2) + math.pow((b.dy - a.dy) * aspect, 2)));
+      lengths.add(
+        lengths.last +
+            math.sqrt(
+              math.pow(b.dx - a.dx, 2) + math.pow((b.dy - a.dy) * aspect, 2),
+            ),
+      );
     }
     final half = lengths.last / 2;
     // Central, lateral, canine, two premolars, two molars.
@@ -429,7 +479,8 @@ class _Draw {
       if (i <= 0) {
         i = 1;
       }
-      final f = (s - lengths[i - 1]) / math.max(lengths[i] - lengths[i - 1], 1e-9);
+      final f =
+          (s - lengths[i - 1]) / math.max(lengths[i] - lengths[i - 1], 1e-9);
       return Offset.lerp(points[i - 1], points[i], f)!;
     }
 
@@ -456,7 +507,14 @@ class _Draw {
             ..translateByDouble(center.dx, center.dy, 0, 1)
             ..scaleByDouble(1, 1 / aspect, 1, 1)
             ..rotateZ(angle),
-          () => tooth(Rect.fromCenter(center: Offset.zero, width: w * 0.94, height: depth), round: i >= 3 ? 0.3 : 0.45),
+          () => tooth(
+            Rect.fromCenter(
+              center: Offset.zero,
+              width: w * 0.94,
+              height: depth,
+            ),
+            round: i >= 3 ? 0.3 : 0.45,
+          ),
         );
         s = half + side * ((s - half).abs() + w);
       }
@@ -513,11 +571,21 @@ class _Draw {
 
   void xray() {
     final rect = const Rect.fromLTWH(0, 0, 1, 1).deflate(0.01);
-    stroke(Path()..addRRect(RRect.fromRectAndRadius(rect, Radius.elliptical(0.03, 0.03 / aspect))), faint);
+    stroke(
+      Path()..addRRect(
+        RRect.fromRectAndRadius(rect, Radius.elliptical(0.03, 0.03 / aspect)),
+      ),
+      faint,
+    );
     // Corner brackets.
     const l = 0.12;
     final lv = l / aspect;
-    for (final corner in [rect.topLeft, rect.topRight, rect.bottomLeft, rect.bottomRight]) {
+    for (final corner in [
+      rect.topLeft,
+      rect.topRight,
+      rect.bottomLeft,
+      rect.bottomRight,
+    ]) {
       final sx = corner.dx < 0.5 ? 1 : -1;
       final sy = corner.dy < 0.5 ? 1 : -1;
       line(corner, corner + Offset(sx * l, 0), paint);
@@ -528,7 +596,12 @@ class _Draw {
 
 /// The outline over the camera (or over the placeholder on web).
 class BlueprintOverlay extends StatelessWidget {
-  const BlueprintOverlay({super.key, required this.blueprint, this.color = Colors.white, this.opacity = 0.35});
+  const BlueprintOverlay({
+    super.key,
+    required this.blueprint,
+    this.color = Colors.white,
+    this.opacity = 0.35,
+  });
 
   final Blueprint blueprint;
   final Color color;

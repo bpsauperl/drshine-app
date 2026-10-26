@@ -1,21 +1,13 @@
-import 'package:drshine/app.dart';
-import 'package:drshine/state/app_state.dart';
 import 'package:drshine/state/session_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'fixtures.dart';
 
-Future<AppState> pumpApp(WidgetTester tester, FakeApi api, MemorySessionStore store) async {
-  final state = AppState(api: api, store: store);
-  await tester.pumpWidget(DrShineApp(state: state));
-  await state.start();
-  await tester.pumpAndSettle();
-  return state;
-}
-
 void main() {
-  testWidgets('signs in with email and password, then shows Patients', (tester) async {
+  testWidgets('signs in with email and password, then shows Patients', (
+    tester,
+  ) async {
     final api = FakeApi();
     final store = MemorySessionStore();
     await pumpApp(tester, api, store);
@@ -25,7 +17,10 @@ void main() {
     await tester.pump();
     expect(find.text('Enter your email and password.'), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('email')), 'doctor@drshine.test');
+    await tester.enterText(
+      find.byKey(const Key('email')),
+      'doctor@drshine.test',
+    );
     await tester.enterText(find.byKey(const Key('password')), 'example');
     await tester.tap(find.byKey(const Key('sign-in')));
     await tester.pumpAndSettle();
@@ -41,7 +36,10 @@ void main() {
     final store = MemorySessionStore();
     await pumpApp(tester, api, store);
 
-    await tester.enterText(find.byKey(const Key('email')), 'doctor@drshine.test');
+    await tester.enterText(
+      find.byKey(const Key('email')),
+      'doctor@drshine.test',
+    );
     await tester.enterText(find.byKey(const Key('password')), 'example');
     await tester.tap(find.byKey(const Key('sign-in')));
     await tester.pumpAndSettle();
@@ -59,16 +57,26 @@ void main() {
     expect(store.token, 'token-2');
   });
 
-  testWidgets('the server address can be changed and is remembered', (tester) async {
+  testWidgets('the server address can be changed and is remembered', (
+    tester,
+  ) async {
     final api = FakeApi();
     final store = MemorySessionStore();
     await pumpApp(tester, api, store);
 
+    await tester.ensureVisible(find.byKey(const Key('server-toggle')));
     await tester.tap(find.byKey(const Key('server-toggle')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('server')), 'http://127.0.0.1:8030');
-    await tester.enterText(find.byKey(const Key('email')), 'doctor@drshine.test');
+    await tester.enterText(
+      find.byKey(const Key('server')),
+      'http://127.0.0.1:8030',
+    );
+    await tester.enterText(
+      find.byKey(const Key('email')),
+      'doctor@drshine.test',
+    );
     await tester.enterText(find.byKey(const Key('password')), 'example');
+    await tester.ensureVisible(find.byKey(const Key('sign-in')));
     await tester.tap(find.byKey(const Key('sign-in')));
     await tester.pumpAndSettle();
 

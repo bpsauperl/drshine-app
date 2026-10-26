@@ -10,14 +10,22 @@ import '../../state/order_builder.dart';
 import 'blueprint.dart';
 
 /// Whether this platform has the in-app camera (the web preview does not).
-bool get cameraSupported => !kIsWeb && (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android);
+bool get cameraSupported =>
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.android);
 
 /// The guided camera: a full-screen preview with the slot's faded outline,
 /// a short instruction, shutter, flash, front/back switch, and a
 /// "Use photo / Retake" review. "Use photo" uploads in the background and
 /// moves on to the next slot, so all slots can be shot in a row.
 class GuidedCameraScreen extends StatefulWidget {
-  const GuidedCameraScreen({super.key, required this.builder, required this.startSlot, this.cameraEnabled});
+  const GuidedCameraScreen({
+    super.key,
+    required this.builder,
+    required this.startSlot,
+    this.cameraEnabled,
+  });
 
   final OrderBuilder builder;
   final String startSlot;
@@ -29,7 +37,8 @@ class GuidedCameraScreen extends StatefulWidget {
   State<GuidedCameraScreen> createState() => _GuidedCameraScreenState();
 }
 
-class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBindingObserver {
+class _GuidedCameraScreenState extends State<GuidedCameraScreen>
+    with WidgetsBindingObserver {
   late int _index;
   CameraController? _controller;
   List<CameraDescription> _cameras = const [];
@@ -48,7 +57,9 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
   @override
   void initState() {
     super.initState();
-    _index = widget.builder.slotIndex(widget.startSlot).clamp(0, _slots.length - 1);
+    _index = widget.builder
+        .slotIndex(widget.startSlot)
+        .clamp(0, _slots.length - 1);
     WidgetsBinding.instance.addObserver(this);
     if (_enabled) {
       unawaited(_startCamera());
@@ -68,7 +79,8 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
     if (!_enabled) {
       return;
     }
-    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
       _controller = null;
       unawaited(controller?.dispose());
       if (mounted) {
@@ -88,8 +100,13 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
         setState(() => _cameraError = 'No camera found on this device.');
         return;
       }
-      final wanted = _useFront ? CameraLensDirection.front : CameraLensDirection.back;
-      final description = _cameras.firstWhere((c) => c.lensDirection == wanted, orElse: () => _cameras.first);
+      final wanted = _useFront
+          ? CameraLensDirection.front
+          : CameraLensDirection.back;
+      final description = _cameras.firstWhere(
+        (c) => c.lensDirection == wanted,
+        orElse: () => _cameras.first,
+      );
       final old = _controller;
       _controller = null;
       await old?.dispose();
@@ -112,9 +129,13 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
       });
     } on CameraException catch (e) {
       if (mounted) {
-        setState(() => _cameraError = e.code == 'CameraAccessDenied' || e.code == 'CameraAccessDeniedWithoutPrompt'
-            ? 'drShine needs the camera. Allow it in Settings, then come back.'
-            : "The camera didn't start. Close and try again.");
+        setState(
+          () => _cameraError =
+              e.code == 'CameraAccessDenied' ||
+                  e.code == 'CameraAccessDeniedWithoutPrompt'
+              ? 'drShine needs the camera. Allow it in Settings, then come back.'
+              : "The camera didn't start. Close and try again.",
+        );
       }
     }
   }
@@ -152,7 +173,9 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
       }
     } on CameraException {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("That didn't work. Try again.")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("That didn't work. Try again.")),
+        );
       }
     } finally {
       if (mounted) {
@@ -166,7 +189,13 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
     if (bytes == null) {
       return;
     }
-    unawaited(widget.builder.uploadPhoto(_slot.slot, bytes, filename: '${_slot.slot}.jpg'));
+    unawaited(
+      widget.builder.uploadPhoto(
+        _slot.slot,
+        bytes,
+        filename: '${_slot.slot}.jpg',
+      ),
+    );
     setState(() => _review = null);
     if (_index + 1 < _slots.length) {
       _go(_index + 1);
@@ -206,7 +235,11 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
                 children: [
                   _topBar(slot),
                   const SizedBox(height: 8),
-                  _instruction(_review != null ? 'Sharp and well lit? Use it, or retake.' : instructionFor(slot.slot, _blueprint)),
+                  _instruction(
+                    _review != null
+                        ? 'Sharp and well lit? Use it, or retake.'
+                        : instructionFor(slot.slot, _blueprint),
+                  ),
                   const Spacer(),
                   if (_review != null) _reviewBar() else _shutterBar(),
                   const SizedBox(height: 16),
@@ -229,10 +262,16 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
       );
     }
     if (_cameraError != null) {
-      return _Placeholder(icon: Icons.videocam_off_outlined, title: 'Camera unavailable', text: _cameraError!);
+      return _Placeholder(
+        icon: Icons.videocam_off_outlined,
+        title: 'Camera unavailable',
+        text: _cameraError!,
+      );
     }
     if (controller == null || !controller.value.isInitialized) {
-      return const Center(child: CircularProgressIndicator(color: Colors.white));
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
     }
     // Fill the screen, cropping the preview's longer side.
     return LayoutBuilder(
@@ -241,7 +280,10 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
         final preview = 1 / controller.value.aspectRatio;
         final scale = screen > preview ? screen / preview : preview / screen;
         return ClipRect(
-          child: Transform.scale(scale: scale, child: Center(child: CameraPreview(controller))),
+          child: Transform.scale(
+            scale: scale,
+            child: Center(child: CameraPreview(controller)),
+          ),
         );
       },
     );
@@ -252,7 +294,11 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Row(
         children: [
-          _RoundButton(icon: Icons.close, tooltip: 'Close', onTap: () => Navigator.of(context).pop()),
+          _RoundButton(
+            icon: Icons.close,
+            tooltip: 'Close',
+            onTap: () => Navigator.of(context).pop(),
+          ),
           Expanded(
             child: Column(
               children: [
@@ -261,12 +307,31 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${_index + 1} of ${_slots.length}${slot.required ? '' : ' · optional'}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${_index + 1} of ${_slots.length}${slot.required ? '' : ' · optional'}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -288,9 +353,16 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
   Widget _instruction(String text) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.45), borderRadius: BorderRadius.circular(20)),
-      child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 15)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(color: Colors.white, fontSize: 15),
+      ),
     );
   }
 
@@ -299,7 +371,11 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        _RoundButton(icon: Icons.chevron_left, tooltip: 'Previous photo', onTap: _index > 0 ? () => _go(_index - 1) : null),
+        _RoundButton(
+          icon: Icons.chevron_left,
+          tooltip: 'Previous photo',
+          onTap: _index > 0 ? () => _go(_index - 1) : null,
+        ),
         Semantics(
           button: true,
           label: 'Take photo',
@@ -309,12 +385,17 @@ class _GuidedCameraScreenState extends State<GuidedCameraScreen> with WidgetsBin
             child: Container(
               width: 78,
               height: 78,
-              decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 4)),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 4),
+              ),
               padding: const EdgeInsets.all(5),
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: ready ? (_capturing ? Colors.white54 : Colors.white) : Colors.white24,
+                  color: ready
+                      ? (_capturing ? Colors.white54 : Colors.white)
+                      : Colors.white24,
                 ),
               ),
             ),
@@ -378,11 +459,15 @@ class _RoundButton extends StatelessWidget {
       onPressed: onTap,
       iconSize: 26,
       style: IconButton.styleFrom(
-        backgroundColor: Colors.black.withValues(alpha: 0.35),
+        backgroundColor: Colors.white.withValues(alpha: 0.12),
         foregroundColor: Colors.white,
         disabledForegroundColor: Colors.white24,
-        disabledBackgroundColor: Colors.black12,
+        disabledBackgroundColor: Colors.white.withValues(alpha: 0.05),
         fixedSize: const Size(48, 48),
+        side: BorderSide(
+          color: Colors.white.withValues(alpha: 0.16),
+          width: 0.5,
+        ),
       ),
       icon: Icon(icon),
     );
@@ -390,7 +475,11 @@ class _RoundButton extends StatelessWidget {
 }
 
 class _Placeholder extends StatelessWidget {
-  const _Placeholder({required this.icon, required this.title, required this.text});
+  const _Placeholder({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
 
   final IconData icon;
   final String title;
@@ -407,9 +496,20 @@ class _Placeholder extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.white70, size: 30),
             const SizedBox(height: 8),
-            Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w600)),
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white70),
+            ),
           ],
         ),
       ),

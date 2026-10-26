@@ -5,11 +5,17 @@ import 'models.dart';
 export 'models.dart';
 
 /// The drShine production (DEV) server the app talks to by default.
-const String defaultServerUrl = 'https://drshine-production-8tmpnh.laravel.cloud';
+const String defaultServerUrl =
+    'https://drshine-production-8tmpnh.laravel.cloud';
 
 /// An API error with the server's own message.
 class ApiException implements Exception {
-  const ApiException(this.statusCode, this.message, {this.errors = const {}, this.missing = const {}});
+  const ApiException(
+    this.statusCode,
+    this.message, {
+    this.errors = const {},
+    this.missing = const {},
+  });
 
   /// The HTTP status, or 0 when the server could not be reached.
   final int statusCode;
@@ -26,7 +32,8 @@ class ApiException implements Exception {
   bool get isOffline => statusCode == 0;
 
   /// The first validation message for [field], if any.
-  String? errorFor(String field) => errors[field]?.isNotEmpty == true ? errors[field]!.first : null;
+  String? errorFor(String field) =>
+      errors[field]?.isNotEmpty == true ? errors[field]!.first : null;
 
   @override
   String toString() => message;
@@ -44,8 +51,15 @@ abstract class ApiClient {
   String? get token;
   set token(String? value);
 
-  Future<LoginResult> login({required String email, required String password, required String device});
-  Future<LoginResult> loginTwoFactor({required String challenge, required String code});
+  Future<LoginResult> login({
+    required String email,
+    required String password,
+    required String device,
+  });
+  Future<LoginResult> loginTwoFactor({
+    required String challenge,
+    required String code,
+  });
   Future<void> logout();
   Future<User> me();
 
@@ -55,7 +69,11 @@ abstract class ApiClient {
 
   Future<Order> createAlignersOrder(String patientId);
   Future<Order> order(String id);
-  Future<Order> choosePlan(String orderId, {required String kind, String? audience});
+  Future<Order> choosePlan(
+    String orderId, {
+    required String kind,
+    String? audience,
+  });
   Future<OrderFile> uploadFile(
     String orderId, {
     required String kind,

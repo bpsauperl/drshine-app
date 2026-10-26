@@ -14,7 +14,8 @@ abstract class SessionStore {
 /// The token in the platform keychain / keystore; the server address and
 /// last email (not secret) in shared preferences.
 class DeviceSessionStore implements SessionStore {
-  DeviceSessionStore({FlutterSecureStorage? secure}) : _secure = secure ?? const FlutterSecureStorage();
+  DeviceSessionStore({FlutterSecureStorage? secure})
+    : _secure = secure ?? const FlutterSecureStorage();
 
   final FlutterSecureStorage _secure;
   static const _tokenKey = 'drshine.token';
@@ -45,16 +46,20 @@ class DeviceSessionStore implements SessionStore {
   }
 
   @override
-  Future<String?> readServerUrl() async => (await SharedPreferences.getInstance()).getString(_serverKey);
+  Future<String?> readServerUrl() async =>
+      (await SharedPreferences.getInstance()).getString(_serverKey);
 
   @override
-  Future<void> writeServerUrl(String url) async => (await SharedPreferences.getInstance()).setString(_serverKey, url);
+  Future<void> writeServerUrl(String url) async =>
+      (await SharedPreferences.getInstance()).setString(_serverKey, url);
 
   @override
-  Future<String?> readLastEmail() async => (await SharedPreferences.getInstance()).getString(_emailKey);
+  Future<String?> readLastEmail() async =>
+      (await SharedPreferences.getInstance()).getString(_emailKey);
 
   @override
-  Future<void> writeLastEmail(String email) async => (await SharedPreferences.getInstance()).setString(_emailKey, email);
+  Future<void> writeLastEmail(String email) async =>
+      (await SharedPreferences.getInstance()).setString(_emailKey, email);
 }
 
 /// An in-memory store, for tests.

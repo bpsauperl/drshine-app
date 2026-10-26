@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shine_kit/shine_kit.dart';
 
 import '../../api/api_client.dart';
 import '../../state/order_builder.dart';
@@ -19,9 +20,25 @@ class PhotosStep extends StatelessWidget {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         fullscreenDialog: true,
-        builder: (_) => GuidedCameraScreen(builder: builder, startSlot: slot.slot, cameraEnabled: cameraEnabled),
+        builder: (_) => GuidedCameraScreen(
+          builder: builder,
+          startSlot: slot.slot,
+          cameraEnabled: cameraEnabled,
+        ),
       ),
     );
+  }
+
+  /// The first required photo still to take.
+  static PhotoSlot? _nextSlot(OrderBuilder builder) {
+    for (final group in builder.photoGroups) {
+      for (final slot in group.value) {
+        if (slot.required && !slot.isTaken) {
+          return slot;
+        }
+      }
+    }
+    return null;
   }
 
   @override
@@ -37,29 +54,77 @@ class PhotosStep extends StatelessWidget {
         StepHeading(
           title: complete ? 'All photos in.' : 'Add the photos.',
           subtitle: 'Tap a photo to take it. * required',
-          trailing: Text(
-            '$done of $total',
-            key: const Key('photo-count'),
-            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: complete ? p.accent : p.ink),
+        ),
+        KitTile(
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Required photos',
+                      style: KitType.eyebrow(color: context.kit.accentText),
+                    ),
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '$done',
+                            style: KitType.number(
+                              size: 32,
+                              color: context.kit.ink,
+                            ),
+                          ),
+                          TextSpan(
+                            text: ' of $total taken',
+                            style: KitType.label(color: context.kit.secondary)
+                                .copyWith(fontSize: 15),
+                          ),
+                        ],
+                      ),
+                      key: const Key('photo-count'),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 54,
+                height: 54,
+                child: CircularProgressIndicator(
+                  value: total == 0 ? 0 : done / total,
+                  strokeWidth: 7,
+                  strokeCap: StrokeCap.round,
+                  backgroundColor: p.accentSoft,
+                  color: context.kit.accentText,
+                ),
+              ),
+            ],
           ),
         ),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: total == 0 ? 0 : done / total,
-            minHeight: 6,
-            backgroundColor: p.line,
+        if (!complete && _nextSlot(builder) != null) ...[
+          const SizedBox(height: 12),
+          KitButton(
+            key: const Key('take-next'),
+            label: 'Take the next: ${_nextSlot(builder)!.label}',
+            icon: Icons.photo_camera_outlined,
+            onPressed: () => _open(context, _nextSlot(builder)!),
           ),
-        ),
+        ],
         if (!cameraSupported && cameraEnabled != true) ...[
           const SizedBox(height: 14),
-          const Notice('Camera unavailable here. Take the photos with the drShine app on a phone.',
-              icon: Icons.no_photography_outlined),
+          const Notice(
+            'Camera unavailable here. Take the photos with the drShine app on a phone.',
+            icon: Icons.no_photography_outlined,
+          ),
         ],
         for (final group in builder.photoGroups) ...[
           SectionLabel(
             group.key,
-            trailing: group.value.any((s) => s.required) ? null : const Pill('Optional'),
+            trailing: group.value.any((s) => s.required)
+                ? null
+                : const Pill('Optional'),
           ),
           GridView.count(
             crossAxisCount: 3,
@@ -69,7 +134,12 @@ class PhotosStep extends StatelessWidget {
             crossAxisSpacing: 10,
             childAspectRatio: 0.78,
             children: [
-              for (final slot in group.value) SlotTile(builder: builder, slot: slot, onTap: () => _open(context, slot)),
+              for (final slot in group.value)
+                SlotTile(
+                  builder: builder,
+                  slot: slot,
+                  onTap: () => _open(context, slot),
+                ),
             ],
           ),
         ],
@@ -81,7 +151,12 @@ class PhotosStep extends StatelessWidget {
 
 /// One photo slot: the photo, or its outline in indigo.
 class SlotTile extends StatelessWidget {
-  const SlotTile({super.key, required this.builder, required this.slot, required this.onTap});
+  const SlotTile({
+    super.key,
+    required this.builder,
+    required this.slot,
+    required this.onTap,
+  });
 
   final OrderBuilder builder;
   final PhotoSlot slot;
@@ -100,10 +175,16 @@ class SlotTile extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: '${slot.label}${slot.required ? ', required' : ''}${slot.isTaken ? ', taken' : ''}',
+      label:
+          '${slot.label}${slot.required ? ', required' : ''}${slot.isTaken ? ', taken' : ''}',
       child: Material(
         color: p.tile,
-        borderRadius: BorderRadius.circular(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: slot.required && !slot.isTaken
+              ? BorderSide(color: p.accent.withValues(alpha: 0.35), width: 1)
+              : BorderSide.none,
+        ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           key: Key('slot-${slot.slot}'),
@@ -116,15 +197,19 @@ class SlotTile extends StatelessWidget {
                   fit: StackFit.expand,
                   children: [
                     if (bytes != null)
-                      Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true)
+                      Image.memory(
+                        bytes,
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                      )
                     else
                       Container(
-                        color: p.accentSoft,
+                        color: p.tile,
                         child: CustomPaint(
                           painter: BlueprintPainter(
                             blueprintFor(slot.slot, slot.guide),
                             color: p.accent,
-                            opacity: 0.8,
+                            opacity: 0.55,
                             strokeWidth: 1.2,
                             fill: 0.78,
                           ),
@@ -137,17 +222,26 @@ class SlotTile extends StatelessWidget {
                         child: const SizedBox(
                           width: 26,
                           height: 26,
-                          child: CircularProgressIndicator(strokeWidth: 2.6, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.6,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     Positioned(
                       top: 6,
                       right: 6,
                       child: error != null
-                          ? const _Badge(icon: Icons.priority_high_rounded, color: Brand.danger)
+                          ? const _Badge(
+                              icon: Icons.priority_high_rounded,
+                              color: Brand.danger,
+                            )
                           : slot.isTaken && !uploading
-                              ? _Badge(icon: Icons.check_rounded, color: p.accentFill)
-                              : const SizedBox.shrink(),
+                          ? _Badge(
+                              icon: Icons.check_rounded,
+                              color: p.accentFill,
+                            )
+                          : const SizedBox.shrink(),
                     ),
                   ],
                 ),
@@ -155,14 +249,26 @@ class SlotTile extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
                 child: Text.rich(
-                  TextSpan(children: [
-                    TextSpan(text: slot.label),
-                    if (slot.required && !slot.isTaken)
-                      TextSpan(text: ' *', style: TextStyle(color: p.accent, fontWeight: FontWeight.w700)),
-                  ]),
+                  TextSpan(
+                    children: [
+                      TextSpan(text: slot.label),
+                      if (slot.required && !slot.isTaken)
+                        TextSpan(
+                          text: ' *',
+                          style: TextStyle(
+                            color: p.accent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, height: 1.2, color: error != null ? Brand.danger : p.ink),
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.2,
+                    color: error != null ? Brand.danger : p.ink,
+                  ),
                 ),
               ),
             ],
@@ -184,7 +290,11 @@ class _Badge extends StatelessWidget {
     return Container(
       width: 22,
       height: 22,
-      decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+      ),
       child: Icon(icon, size: 14, color: Colors.white),
     );
   }

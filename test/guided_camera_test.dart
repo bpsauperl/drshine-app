@@ -28,18 +28,30 @@ void main() {
         'left_front_45_smile': Blueprint.threeQuarterLeft,
         'right_front_45': Blueprint.threeQuarterRight,
       };
-      expected.forEach((slot, blueprint) => expect(blueprintFor(slot), blueprint, reason: slot));
+      expected.forEach(
+        (slot, blueprint) =>
+            expect(blueprintFor(slot), blueprint, reason: slot),
+      );
     });
 
     test('falls back to the guide key for slots the app does not know', () {
-      expect(blueprintFor('new_slot', 'occlusal-lower'), Blueprint.occlusalLower);
-      expect(blueprintFor('new_slot', 'frontal-smile'), Blueprint.faceFrontSmile);
+      expect(
+        blueprintFor('new_slot', 'occlusal-lower'),
+        Blueprint.occlusalLower,
+      );
+      expect(
+        blueprintFor('new_slot', 'frontal-smile'),
+        Blueprint.faceFrontSmile,
+      );
       expect(blueprintFor('new_slot', 'xray'), Blueprint.xray);
       expect(blueprintFor('new_slot', 'something-else'), Blueprint.faceFront);
     });
 
     test('the front arches say retractors in, teeth together', () {
-      expect(instructionFor('front_arches', Blueprint.frontArches), 'Retractors in, teeth together.');
+      expect(
+        instructionFor('front_arches', Blueprint.frontArches),
+        'Retractors in, teeth together.',
+      );
     });
   });
 
@@ -56,7 +68,8 @@ void main() {
 
     test('fits the drawing inside the screen', () {
       for (final blueprint in Blueprint.values) {
-        final frame = BlueprintPainter(blueprint).frameFor(const Size(390, 844));
+        final frame = BlueprintPainter(blueprint)
+            .frameFor(const Size(390, 844));
         expect(frame.left, greaterThanOrEqualTo(0));
         expect(frame.top, greaterThanOrEqualTo(0));
         expect(frame.right, lessThanOrEqualTo(390));
@@ -71,29 +84,51 @@ void main() {
     });
   });
 
-  testWidgets('the guided camera shows the outline, instruction and slot arrows', (tester) async {
-    final api = FakeApi();
-    final builder = OrderBuilder(api: api, order: Order.fromJson(api.orderData), userCanSend: true);
-    await tester.pumpWidget(MaterialApp(
-      home: GuidedCameraScreen(builder: builder, startSlot: 'front_arches', cameraEnabled: false),
-    ));
+  testWidgets(
+    'the guided camera shows the outline, instruction and slot arrows',
+    (tester) async {
+      final api = FakeApi();
+      final builder = OrderBuilder(
+        api: api,
+        order: Order.fromJson(api.orderData),
+        userCanSend: true,
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: GuidedCameraScreen(
+            builder: builder,
+            startSlot: 'front_arches',
+            cameraEnabled: false,
+          ),
+        ),
+      );
 
-    expect(find.text('Front arches'), findsOneWidget);
-    expect(find.text('7 of 18'), findsOneWidget);
-    expect(find.text('Retractors in, teeth together.'), findsOneWidget);
-    expect(find.text('Camera unavailable here'), findsOneWidget);
-    final paint = tester.widget<CustomPaint>(find.byKey(const Key('blueprint')));
-    expect((paint.painter! as BlueprintPainter).blueprint, Blueprint.frontArches);
+      expect(find.text('Front arches'), findsOneWidget);
+      expect(find.text('7 of 18'), findsOneWidget);
+      expect(find.text('Retractors in, teeth together.'), findsOneWidget);
+      expect(find.text('Camera unavailable here'), findsOneWidget);
+      final paint = tester.widget<CustomPaint>(
+        find.byKey(const Key('blueprint')),
+      );
+      expect(
+        (paint.painter! as BlueprintPainter).blueprint,
+        Blueprint.frontArches,
+      );
 
-    await tester.tap(find.byTooltip('Next photo'));
-    await tester.pump();
-    expect(find.text('Left bite'), findsOneWidget);
-    expect((tester.widget<CustomPaint>(find.byKey(const Key('blueprint'))).painter! as BlueprintPainter).blueprint,
-        Blueprint.buccalLeft);
+      await tester.tap(find.byTooltip('Next photo'));
+      await tester.pump();
+      expect(find.text('Left bite'), findsOneWidget);
+      expect(
+        (tester.widget<CustomPaint>(find.byKey(const Key('blueprint'))).painter!
+                as BlueprintPainter)
+            .blueprint,
+        Blueprint.buccalLeft,
+      );
 
-    await tester.tap(find.byTooltip('Previous photo'));
-    await tester.tap(find.byTooltip('Previous photo'));
-    await tester.pump();
-    expect(find.text('Right profile'), findsOneWidget);
-  });
+      await tester.tap(find.byTooltip('Previous photo'));
+      await tester.tap(find.byTooltip('Previous photo'));
+      await tester.pump();
+      expect(find.text('Right profile'), findsOneWidget);
+    },
+  );
 }

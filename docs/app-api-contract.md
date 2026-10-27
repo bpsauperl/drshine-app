@@ -1,6 +1,6 @@
 # drShine app API (contract v1)
 
-Base URL is configurable in each app. DEV: `https://drshine-production-8tmpnh.laravel.cloud`. Local: `http://127.0.0.1:8030`.
+Base URL is configurable in each app. DEV: `https://drshine-dev-h4s1yo.laravel.cloud`. Local: `http://127.0.0.1:8030`.
 
 - **Format:** JSON in and out, UTF-8, dates ISO 8601 (`2026-10-26`, `2026-10-26T09:30:00+01:00`).
 - **Auth:** `Authorization: Bearer <token>`. Tokens are opaque strings; store them in the platform keychain (`flutter_secure_storage`).

@@ -6,7 +6,7 @@ export 'models.dart';
 
 /// The drShine production (DEV) server the app talks to by default.
 const String defaultServerUrl =
-    'https://drshine-production-8tmpnh.laravel.cloud';
+    'https://drshine-dev-h4s1yo.laravel.cloud';
 
 /// An API error with the server's own message.
 class ApiException implements Exception {
@@ -43,7 +43,7 @@ class ApiException implements Exception {
 ///
 /// The real implementation is [HttpApiClient]; widget tests use a fake.
 abstract class ApiClient {
-  /// The server, e.g. `https://drshine-production-8tmpnh.laravel.cloud`.
+  /// The server, e.g. `https://drshine-dev-h4s1yo.laravel.cloud`.
   String get baseUrl;
   set baseUrl(String value);
 

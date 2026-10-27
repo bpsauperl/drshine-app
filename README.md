@@ -55,7 +55,7 @@ flutter run                 # on a connected phone, or a simulator / emulator
 flutter run -d chrome       # web preview (no camera)
 ```
 
-The default server is `https://drshine-production-8tmpnh.laravel.cloud` (DEV, made-up example data). For a local drShine, open **Server** on the sign-in screen and enter `http://127.0.0.1:8030` (from an Android emulator: `http://10.0.2.2:8030`).
+The default server is `https://drshine-dev-h4s1yo.laravel.cloud` (DEV, made-up example data). For a local drShine, open **Server** on the sign-in screen and enter `http://127.0.0.1:8030` (from an Android emulator: `http://10.0.2.2:8030`).
 
 To preview the web build:
 

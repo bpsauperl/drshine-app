@@ -16,11 +16,13 @@ The clinics' app for **Shine clear aligners** (SmileLabs, Slovenia). A dentist o
 | Order builder | A progress strip: **Plan** (only when `plan_choice.asks`), **Photos**, **Scans**, **RX**, **Submit**. |
 | Guided camera | A full-screen preview with a faded outline of what to capture, an instruction, shutter, flash, front/back switch, Use photo / Retake, and arrows to move through the slots. |
 | Settings | Signed-in user, clinic, server, sign out. |
+| Lock | Covers the app until the phone's own unlock passes (Face ID, Touch ID, the Android fingerprint, or the passcode). "Sign out" is the other way on. See [The app lock](#the-app-lock). |
 
 ```
 lib/
   main.dart                  start-up, portrait lock on phones
-  app.dart                   MaterialApp, light and dark themes, sign-in or Patients
+  app.dart                   MaterialApp, light and dark themes, sign-in or Patients,
+                             the lock over all of it, app-lifecycle handling
   theme.dart                 palette (indigo #5364a3 on #f4f6fa), shapes, type
   api/
     api_client.dart          ApiClient interface + ApiException (fakeable in tests)
@@ -29,12 +31,15 @@ lib/
   auth/
     browser_sign_in.dart     the system sign-in sheet (flutter_web_auth_2, fakeable in tests),
                              the verifier and its challenge, the error sentences
+    device_unlock.dart       the phone's own unlock (local_auth, fakeable in tests)
   state/
     app_state.dart           session: server, token, user, sign-in options (ChangeNotifier)
-    session_store.dart       token in flutter_secure_storage, server in shared_preferences
+    app_lock.dart            the app lock's rules: when it asks, 04:00 in Ljubljana
+    session_store.dart       token in flutter_secure_storage; server, last email and the
+                             time of the last unlock in shared_preferences
     order_builder.dart       the builder's logic: steps, completion, missing, attestations, uploads
   screens/
-    sign_in_screen.dart, patients_screen.dart, new_patient_sheet.dart,
+    sign_in_screen.dart, lock_screen.dart, patients_screen.dart, new_patient_sheet.dart,
     patient_screen.dart, settings_screen.dart
     order/                   the builder and its steps (plan, photos, scans, rx, submit, done)
     camera/
@@ -42,7 +47,7 @@ lib/
       guided_camera_screen.dart
   widgets/common.dart        wordmark, tiles, pills, notices
   util/format.dart           euros (€1.150) and dates
-test/                        logic, JSON parsing, sign-in and camera-overlay tests
+test/                        logic, JSON parsing, sign-in, app-lock and camera-overlay tests
 docs/app-api-contract.md     the API contract the app codes against
 ```
 
@@ -90,6 +95,17 @@ drShine's server is the SmileID client; the app holds no SmileID secret and neve
 - **Web preview:** there is no sign-in sheet; the SmileID button says it works in the phone app.
 - **Tests** use `FakeBrowserSignIn` (`test/fixtures.dart`) in place of the sheet.
 
+### The app lock
+
+A cover over the patient data on this phone, opened by the phone's own unlock (`local_auth`: Face ID, Touch ID, the Android fingerprint, with the passcode behind them). It is on the phone only: nothing changes on the server, whose SmileID re-check goes on as before.
+
+- **It asks** when the app is started with a saved session (always, after the app was fully closed), on the first return after 04:00 in Ljubljana, and on a return after 15 minutes or more in the background. A sign-in with SmileID counts as an unlock. A lock screen that is already up waits for its **Unlock** button; **Sign out** is always there.
+- **Not in front:** the app is covered with the wordmark, so the app switcher and the moment of return don't show patient names.
+- **A phone with no Face ID, fingerprint or passcode** can't be asked. It is signed out on the first return after 04:00 (SmileID again each morning, as on the website) and otherwise opens.
+- The time of the last sign-in or unlock is kept in shared preferences (a time only), for the morning rule after the app was closed.
+- **iOS:** `NSFaceIDUsageDescription` in `ios/Runner/Info.plist`. **Android:** the `USE_BIOMETRIC` permission, `MainActivity` is a `FlutterFragmentActivity`, and the themes in `styles.xml` are AppCompat ones (the prompt needs both).
+- **Web preview:** no lock. **Tests** use `FakeDeviceUnlock` (`test/fixtures.dart`) and a clock they set.
+
 How the app reads the contract:
 - A server that has no `GET /sign-in` yet (`404`) is read as "passwords only", and the password form starts open, so the app still works against a server from before SmileID.
 - Photo outlines are chosen by **slot** first (it tells left from right), with the `guide` key as the fallback for new slots.
@@ -133,6 +149,6 @@ The Android build declares the camera permission, uses `minSdk` 23 or higher, an
 - **Store screenshots** for iPhone (and iPad, if offered) and Android phones.
 - **Privacy policy URL** for both stores, plus the App Store privacy answers and the Play data-safety form (the app handles patient photos and health data).
 - **Choose from library:** not in this version. The `camera` package can't pick from the gallery, and none of the allowed packages can.
-- **A first run on real devices:** camera permission, flash, front/back switching and uploads haven't been tried on hardware yet (the app was built and tested without Xcode or the Android SDK). The same goes for Sign in with SmileID: the sheet, Face ID with a passkey and the return to the app are proven only against fakes in the tests.
+- **A first run on real devices:** camera permission, flash, front/back switching and uploads haven't been tried on hardware yet (the app was built and tested without Xcode or the Android SDK). The same goes for Sign in with SmileID: the sheet, Face ID with a passkey and the return to the app are proven only against fakes in the tests. The app lock was tried in the iOS simulator with its pretend Face ID (locked at start, a matching face opens, a short time away doesn't ask, a long one does); a real iPhone, the passcode fallback, the app switcher's cover and all of Android are still to try.
 
 The sample data in the tests is made up. Never use real patient names or photos as sample data.

@@ -9,10 +9,15 @@ abstract class SessionStore {
   Future<void> writeServerUrl(String url);
   Future<String?> readLastEmail();
   Future<void> writeLastEmail(String email);
+
+  /// When the user last proved who they are on this phone: a sign-in or an
+  /// unlock. A time only; the app lock's morning rule reads it.
+  Future<DateTime?> readLastUnlock();
+  Future<void> writeLastUnlock(DateTime? at);
 }
 
-/// The token in the platform keychain / keystore; the server address and
-/// last email (not secret) in shared preferences.
+/// The token in the platform keychain / keystore; the server address, last
+/// email and last unlock time (not secret) in shared preferences.
 class DeviceSessionStore implements SessionStore {
   DeviceSessionStore({FlutterSecureStorage? secure})
     : _secure = secure ?? const FlutterSecureStorage();
@@ -21,6 +26,7 @@ class DeviceSessionStore implements SessionStore {
   static const _tokenKey = 'drshine.token';
   static const _serverKey = 'drshine.server';
   static const _emailKey = 'drshine.email';
+  static const _unlockKey = 'drshine.unlocked_at';
 
   @override
   Future<String?> readToken() async {
@@ -60,15 +66,36 @@ class DeviceSessionStore implements SessionStore {
   @override
   Future<void> writeLastEmail(String email) async =>
       (await SharedPreferences.getInstance()).setString(_emailKey, email);
+
+  @override
+  Future<DateTime?> readLastUnlock() async => DateTime.tryParse(
+    (await SharedPreferences.getInstance()).getString(_unlockKey) ?? '',
+  );
+
+  @override
+  Future<void> writeLastUnlock(DateTime? at) async {
+    final preferences = await SharedPreferences.getInstance();
+    if (at == null) {
+      await preferences.remove(_unlockKey);
+    } else {
+      await preferences.setString(_unlockKey, at.toUtc().toIso8601String());
+    }
+  }
 }
 
 /// An in-memory store, for tests.
 class MemorySessionStore implements SessionStore {
-  MemorySessionStore({this.token, this.serverUrl, this.lastEmail});
+  MemorySessionStore({
+    this.token,
+    this.serverUrl,
+    this.lastEmail,
+    this.lastUnlock,
+  });
 
   String? token;
   String? serverUrl;
   String? lastEmail;
+  DateTime? lastUnlock;
 
   @override
   Future<String?> readToken() async => token;
@@ -87,4 +114,10 @@ class MemorySessionStore implements SessionStore {
 
   @override
   Future<void> writeLastEmail(String email) async => lastEmail = email;
+
+  @override
+  Future<DateTime?> readLastUnlock() async => lastUnlock;
+
+  @override
+  Future<void> writeLastUnlock(DateTime? at) async => lastUnlock = at;
 }

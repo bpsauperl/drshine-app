@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'api/http_api_client.dart';
 import 'app.dart';
 import 'auth/browser_sign_in.dart';
+import 'auth/device_unlock.dart';
+import 'state/app_lock.dart';
 import 'state/app_state.dart';
 import 'state/session_store.dart';
 
@@ -26,6 +28,10 @@ Future<void> main() async {
     browser: kIsWeb ? null : const SystemBrowserSignIn(),
   );
   api.onUnauthorized = state.sessionExpired;
-  runApp(DrShineApp(state: state));
+  // The web preview has no phone to ask.
+  final lock = kIsWeb
+      ? null
+      : AppLock(state: state, unlocker: SystemDeviceUnlock());
+  runApp(DrShineApp(state: state, lock: lock));
   await state.start();
 }

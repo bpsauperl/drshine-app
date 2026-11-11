@@ -1,5 +1,6 @@
 package si.smilelabs.drshine
 
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
-class MainActivity : FlutterActivity()
+/** A FragmentActivity, which the system's unlock prompt (local_auth) needs. */
+class MainActivity : FlutterFragmentActivity()

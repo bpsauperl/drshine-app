@@ -14,7 +14,7 @@ Base URL is configurable in each app. DEV: `https://drshine-dev-h4s1yo.laravel.c
 
 The app signs in with **SmileID**. drShine's server is the SmileID (OpenID Connect) client; the phone only opens the system sign-in sheet and gets a drShine token back.
 
-- `GET /sign-in` (no token) → `{smileid: bool, password: bool}`. `smileid` says Sign in with SmileID is set up on this server. `password: false` means the server takes no passwords: the app hides every password control.
+- `GET /sign-in` (no token) → `{smileid: bool}`. `smileid` says Sign in with SmileID is set up on this server. There is no other way to sign in: drShine has no passwords.
 
 Sign in with SmileID, in three steps:
 
@@ -24,7 +24,7 @@ Sign in with SmileID, in three steps:
    - `email` pre-fills SmileID with the last address used on this phone.
    - `switch=1` is sent only for "Use another SmileID": the browser is first signed out of SmileID.
    - The sheet ends on `si.smilelabs.drshine:/callback?ticket=<48 chars>` or on `si.smilelabs.drshine:/callback?error=<code>`. Closing the sheet is not an error.
-3. `POST /login/smileid {ticket, verifier, device}` → `200 {token, user}` (as `/login`), or `422 {message, errors: {ticket: [msg]}}`. A ticket works once, for 2 minutes, and only with the verifier its challenge was made from.
+3. `POST /login/smileid {ticket, verifier, device}` → `200 {token, user}`, or `422 {message, errors: {ticket: [msg]}}`. A ticket works once, for 2 minutes, and only with the verifier its challenge was made from.
 
 Error codes from the sheet and what the app says:
 
@@ -38,19 +38,13 @@ Error codes from the sheet and what the app says:
 
 Any other code reads like `not_finished`.
 
-With a drShine password, only while `password` is true:
-
-- `POST /login {email, password, device}`
-  - → `200 {token, user}`
-  - or `200 {two_factor: true, challenge}` (challenge is valid 10 min)
-  - or `422` with `errors.email` "Your clinic signs in with SmileID." when the clinic or the server takes no passwords
-- `POST /login/two-factor {challenge, code}` → `200 {token, user}`. `code` is the 6-digit TOTP or a recovery code.
+No passwords: `POST /login` and `POST /login/two-factor` sign nobody in. They are kept only to answer an app from before SmileID with `422 {message: "drShine signs in with SmileID now. Update the drShine app."}`; this app never calls them.
 
 The session:
 
 - `POST /logout` → `204`
 - `GET /me` → `{user}`
-- A `401` carries `{message}`, for example "Your SmileID session has ended. Please sign in again." (the SmileID was switched off; drShine checks it at most every 5 minutes) or "Sign in again with SmileID." (a token from a password, after passwords went off). The app goes back to sign-in and shows the sentence once.
+- A `401` carries `{message}`, for example "Your SmileID session has ended. Please sign in again." (the SmileID was switched off; drShine checks it at most every 5 minutes) or "Sign in again with SmileID." (a token from the days of drShine passwords; the server removes it). The app goes back to sign-in and shows the sentence once.
 
 `user` = `{id, name, email, role, role_label, can_send, clinic: {id, name}}`. `can_send` is true for treating doctors: only they send orders; assistants prepare.
 

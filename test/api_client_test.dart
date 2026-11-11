@@ -20,48 +20,6 @@ http.Response json(Object body, [int status = 200]) => http.Response(
 
 void main() {
   group('HttpApiClient', () {
-    test('signs in and parses the user', () async {
-      late http.Request sent;
-      final api = HttpApiClient(
-        baseUrl: 'https://example.test/',
-        client: MockClient((request) async {
-          sent = request;
-          return json({'token': 'tok', 'user': userJson(canSend: false)});
-        }),
-      );
-      final result = await api.login(
-        email: 'a@b.test',
-        password: 'pw',
-        device: 'drShine on iPhone',
-      );
-      expect(sent.url.toString(), 'https://example.test/api/app/v1/login');
-      expect(jsonDecode(sent.body), {
-        'email': 'a@b.test',
-        'password': 'pw',
-        'device': 'drShine on iPhone',
-      });
-      expect(result.needsTwoFactor, isFalse);
-      expect(result.token, 'tok');
-      expect(result.user!.canSend, isFalse);
-      expect(result.user!.clinic!.name, 'Example Dental Clinic');
-      expect(result.user!.id, '7');
-    });
-
-    test('a two-step sign-in returns the challenge', () async {
-      final api = HttpApiClient(
-        client: MockClient(
-          (_) async => json({'two_factor': true, 'challenge': 'abc'}),
-        ),
-      );
-      final result = await api.login(
-        email: 'a@b.test',
-        password: 'pw',
-        device: 'x',
-      );
-      expect(result.needsTwoFactor, isTrue);
-      expect(result.challenge, 'abc');
-    });
-
     test('sends the Bearer token and the search query', () async {
       late http.Request sent;
       final api = HttpApiClient(
@@ -271,13 +229,13 @@ void main() {
   });
 
   group('Sign in with SmileID', () {
-    test('asks the server which ways to sign in it takes', () async {
+    test('asks the server whether it has Sign in with SmileID', () async {
       late http.Request sent;
       final api = HttpApiClient(
         baseUrl: 'https://example.test',
         client: MockClient((request) async {
           sent = request;
-          return json({'smileid': true, 'password': false});
+          return json({'smileid': true});
         }),
       );
       final options = await api.signInOptions();
@@ -285,16 +243,14 @@ void main() {
       expect(sent.url.toString(), 'https://example.test/api/app/v1/sign-in');
       expect(sent.headers.containsKey('Authorization'), isFalse);
       expect(options.smileId, isTrue);
-      expect(options.password, isFalse);
     });
 
-    test('a server from before SmileID takes passwords only', () async {
+    test('a server from before SmileID has no way in', () async {
       final api = HttpApiClient(
         client: MockClient((_) async => json({'message': 'Not found.'}, 404)),
       );
       final options = await api.signInOptions();
       expect(options.smileId, isFalse);
-      expect(options.password, isTrue);
     });
 
     test('the start link carries challenge, device and email', () {
@@ -354,7 +310,7 @@ void main() {
         baseUrl: 'https://example.test',
         client: MockClient((request) async {
           sent = request;
-          return json({'token': 'tok', 'user': userJson()});
+          return json({'token': 'tok', 'user': userJson(canSend: false)});
         }),
       );
       final result = await api.loginWithSmileId(
@@ -372,9 +328,11 @@ void main() {
         'verifier': 'v' * 43,
         'device': 'drShine on iPhone',
       });
-      expect(result.needsTwoFactor, isFalse);
       expect(result.token, 'tok');
       expect(result.user!.email, 'doctor@drshine.test');
+      expect(result.user!.canSend, isFalse);
+      expect(result.user!.clinic!.name, 'Example Dental Clinic');
+      expect(result.user!.id, '7');
     });
 
     test('a refused ticket carries the server message', () async {

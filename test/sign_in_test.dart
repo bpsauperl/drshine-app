@@ -6,20 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'fixtures.dart';
 
-const _passwordsOn = SignInOptions(smileId: true, password: true);
-
-/// Opens the password form behind "Use your drShine password".
-Future<void> openPasswordForm(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('password-toggle')));
-  await tester.pumpAndSettle();
-}
-
-Future<void> tapSignIn(WidgetTester tester) async {
-  await tester.ensureVisible(find.byKey(const Key('sign-in')));
-  await tester.tap(find.byKey(const Key('sign-in')));
-  await tester.pumpAndSettle();
-}
-
 void main() {
   group('Sign in with SmileID', () {
     testWidgets('stores the token and shows Patients', (tester) async {
@@ -225,128 +211,49 @@ void main() {
     });
   });
 
-  group('The drShine password', () {
-    testWidgets('is offered only when the server takes passwords', (
+  group('No password', () {
+    testWidgets('the screen has the SmileID button and nothing to type', (
       tester,
     ) async {
-      final api = FakeApi();
-      await pumpApp(tester, api, MemorySessionStore());
+      await pumpApp(tester, FakeApi(), MemorySessionStore());
 
       expect(find.byKey(const Key('smileid')), findsOneWidget);
-      expect(find.byKey(const Key('password-toggle')), findsNothing);
-      expect(find.byKey(const Key('email')), findsNothing);
-      expect(find.byKey(const Key('password')), findsNothing);
+      expect(find.text('Use your drShine password'), findsNothing);
+      expect(find.byType(TextField), findsNothing);
       expect(find.byKey(const Key('sign-in')), findsNothing);
     });
 
-    testWidgets('is hidden while the server cannot be reached', (tester) async {
+    testWidgets('a server that cannot be reached still shows the button', (
+      tester,
+    ) async {
       final api = FakeApi()..options = null;
       await pumpApp(tester, api, MemorySessionStore());
 
       expect(find.byKey(const Key('smileid')), findsOneWidget);
-      expect(find.byKey(const Key('password-toggle')), findsNothing);
-      expect(find.byKey(const Key('password')), findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byIcon(Icons.info_outline), findsNothing);
     });
 
-    testWidgets('opens behind its link and signs in, then shows Patients', (
+    testWidgets('a server without SmileID says so, and offers no other way', (
       tester,
     ) async {
-      final api = FakeApi()..options = _passwordsOn;
-      final store = MemorySessionStore();
-      await pumpApp(tester, api, store);
-
-      expect(find.text('Use your drShine password'), findsOneWidget);
-      expect(find.byKey(const Key('email')), findsNothing);
-      await openPasswordForm(tester);
-
-      await tapSignIn(tester);
-      expect(find.text('Enter your email and password.'), findsOneWidget);
-
-      await tester.enterText(
-        find.byKey(const Key('email')),
-        'doctor@drshine.test',
-      );
-      await tester.enterText(find.byKey(const Key('password')), 'example');
-      await tapSignIn(tester);
-
-      expect(find.text('Patients'), findsOneWidget);
-      expect(find.text('Test Patient'), findsOneWidget);
-      expect(store.token, 'token-1');
-      expect(store.lastEmail, 'doctor@drshine.test');
-    });
-
-    testWidgets('asks for the 6-digit code when two-step is on', (
-      tester,
-    ) async {
-      final api = FakeApi()
-        ..options = _passwordsOn
-        ..twoFactor = true;
-      final store = MemorySessionStore();
-      await pumpApp(tester, api, store);
-      await openPasswordForm(tester);
-
-      await tester.enterText(
-        find.byKey(const Key('email')),
-        'doctor@drshine.test',
-      );
-      await tester.enterText(find.byKey(const Key('password')), 'example');
-      await tapSignIn(tester);
-
-      expect(find.text('One more step.'), findsOneWidget);
-      expect(find.byKey(const Key('password')), findsNothing);
-      expect(find.byKey(const Key('smileid')), findsNothing);
-      expect(store.token, isNull);
-
-      await tester.enterText(find.byKey(const Key('code')), '123456');
-      await tapSignIn(tester);
-
-      expect(api.lastCode, '123456');
-      expect(find.text('Patients'), findsOneWidget);
-      expect(store.token, 'token-2');
-    });
-
-    testWidgets('a clinic that signs in with SmileID is told so', (
-      tester,
-    ) async {
-      final api = FakeApi()..options = _passwordsOn;
-      final store = MemorySessionStore();
-      await pumpApp(tester, api, store);
-      await openPasswordForm(tester);
-      api.failNext = const ApiException(
-        422,
-        'Your clinic signs in with SmileID.',
-        errors: {
-          'email': ['Your clinic signs in with SmileID.'],
-        },
-      );
-
-      await tester.enterText(
-        find.byKey(const Key('email')),
-        'doctor@drshine.test',
-      );
-      await tester.enterText(find.byKey(const Key('password')), 'example');
-      await tapSignIn(tester);
-
-      expect(find.text('Your clinic signs in with SmileID.'), findsOneWidget);
-      expect(store.token, isNull);
-    });
-
-    testWidgets('starts open on a server that has no SmileID', (tester) async {
-      final api = FakeApi()
-        ..options = const SignInOptions(smileId: false, password: true);
+      final api = FakeApi()..options = const SignInOptions(smileId: false);
       await pumpApp(tester, api, MemorySessionStore());
 
-      expect(find.byKey(const Key('email')), findsOneWidget);
-      expect(find.byKey(const Key('password')), findsOneWidget);
+      expect(
+        find.text("Sign in with SmileID isn't ready on this server yet."),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('smileid')), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
     });
 
     testWidgets('the server address can be changed and is remembered', (
       tester,
     ) async {
-      final api = FakeApi()..options = _passwordsOn;
+      final api = FakeApi();
       final store = MemorySessionStore();
       await pumpApp(tester, api, store);
-      await openPasswordForm(tester);
 
       await tester.ensureVisible(find.byKey(const Key('server-toggle')));
       await tester.tap(find.byKey(const Key('server-toggle')));
@@ -355,12 +262,8 @@ void main() {
         find.byKey(const Key('server')),
         'http://127.0.0.1:8030',
       );
-      await tester.enterText(
-        find.byKey(const Key('email')),
-        'doctor@drshine.test',
-      );
-      await tester.enterText(find.byKey(const Key('password')), 'example');
-      await tapSignIn(tester);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
 
       expect(api.baseUrl, 'http://127.0.0.1:8030');
       expect(store.serverUrl, 'http://127.0.0.1:8030');

@@ -50,7 +50,7 @@ abstract class ApiClient {
   String? get token;
   set token(String? value);
 
-  /// Which ways to sign in the server takes (`GET /sign-in`, no token needed).
+  /// Whether Sign in with SmileID is set up on the server (`GET /sign-in`, no token needed).
   Future<SignInOptions> signInOptions();
 
   /// The page the sign-in sheet opens (`{server}/app/sign-in`, outside the API
@@ -69,15 +69,6 @@ abstract class ApiClient {
     required String device,
   });
 
-  Future<LoginResult> login({
-    required String email,
-    required String password,
-    required String device,
-  });
-  Future<LoginResult> loginTwoFactor({
-    required String challenge,
-    required String code,
-  });
   Future<void> logout();
   Future<User> me();
 

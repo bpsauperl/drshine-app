@@ -153,8 +153,8 @@ class HttpApiClient implements ApiClient {
       return SignInOptions.fromJson(await _send('GET', '/sign-in'));
     } on ApiException catch (error) {
       if (error.statusCode == 404) {
-        // A server from before Sign in with SmileID: passwords only.
-        return const SignInOptions(smileId: false, password: true);
+        // A server from before Sign in with SmileID: there is no way in.
+        return const SignInOptions(smileId: false);
       }
       rethrow;
     }
@@ -185,31 +185,6 @@ class HttpApiClient implements ApiClient {
       'POST',
       '/login/smileid',
       body: {'ticket': ticket, 'verifier': verifier, 'device': device},
-    ),
-  );
-
-  @override
-  Future<LoginResult> login({
-    required String email,
-    required String password,
-    required String device,
-  }) async => LoginResult.fromJson(
-    await _send(
-      'POST',
-      '/login',
-      body: {'email': email, 'password': password, 'device': device},
-    ),
-  );
-
-  @override
-  Future<LoginResult> loginTwoFactor({
-    required String challenge,
-    required String code,
-  }) async => LoginResult.fromJson(
-    await _send(
-      'POST',
-      '/login/two-factor',
-      body: {'challenge': challenge, 'code': code},
     ),
   );
 

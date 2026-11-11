@@ -188,13 +188,16 @@ class AppState extends ChangeNotifier {
     _set(SessionStatus.signedIn);
   }
 
-  Future<void> signOut() async {
+  /// Signs out here and on the server. [notice] is a reason for the sign-in
+  /// screen, when it was the app that signed the user out.
+  Future<void> signOut({String? notice}) async {
     try {
       await api.logout();
     } on ApiException {
       // Signed out on this phone either way.
     }
     await _forget();
+    _signInNotice = notice;
     _signedOut();
   }
 

@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:drshine/api/api_client.dart';
 import 'package:drshine/app.dart';
 import 'package:drshine/auth/browser_sign_in.dart';
+import 'package:drshine/auth/device_unlock.dart';
+import 'package:drshine/state/app_lock.dart';
 import 'package:drshine/state/app_state.dart';
 import 'package:drshine/state/session_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -510,23 +512,50 @@ class FakeBrowserSignIn implements BrowserSignIn {
   }
 }
 
+/// The phone's unlock, faked: Face ID, fingerprint or passcode.
+class FakeDeviceUnlock implements DeviceUnlock {
+  /// False for a phone with no Face ID, fingerprint or passcode.
+  bool screenLock = true;
+
+  /// What the phone answers to the next prompt.
+  UnlockResult answer = UnlockResult.unlocked;
+
+  /// How many times the prompt came up.
+  int asked = 0;
+
+  @override
+  Future<bool> hasScreenLock() async => screenLock;
+
+  @override
+  Future<UnlockResult> ask() async {
+    asked++;
+    return screenLock ? answer : UnlockResult.noScreenLock;
+  }
+}
+
 /// Starts the whole app with [api] and [store] and lets it settle.
 ///
 /// [browser] is the sign-in sheet (a [FakeBrowserSignIn] by default);
 /// [webPreview] starts the app without one, as in the web preview.
+/// [unlock] adds the app lock, on [clock]'s time; without it there is none.
 Future<AppState> pumpApp(
   WidgetTester tester,
   FakeApi api,
   MemorySessionStore store, {
   BrowserSignIn? browser,
   bool webPreview = false,
+  DeviceUnlock? unlock,
+  DateTime Function()? clock,
 }) async {
   final state = AppState(
     api: api,
     store: store,
     browser: webPreview ? null : browser ?? FakeBrowserSignIn(api),
   );
-  await tester.pumpWidget(DrShineApp(state: state));
+  final lock = unlock == null
+      ? null
+      : AppLock(state: state, unlocker: unlock, clock: clock);
+  await tester.pumpWidget(DrShineApp(state: state, lock: lock));
   await state.start();
   await tester.pumpAndSettle();
   return state;

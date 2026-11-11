@@ -22,8 +22,9 @@ class HttpApiClient implements ApiClient {
   @override
   String? token;
 
-  /// Called when the server answers `401`, so the app can go back to sign-in.
-  void Function()? onUnauthorized;
+  /// Called when the server answers `401`, with its message, so the app can
+  /// go back to sign-in and say why.
+  void Function(String message)? onUnauthorized;
 
   static const Duration _timeout = Duration(seconds: 30);
   static const Duration _uploadTimeout = Duration(minutes: 3);
@@ -112,9 +113,6 @@ class HttpApiClient implements ApiClient {
   }
 
   ApiException _error(int status, Json json) {
-    if (status == 401) {
-      onUnauthorized?.call();
-    }
     Map<String, List<String>> lists(Object? value) {
       final out = <String, List<String>>{};
       if (value is Map) {
@@ -138,6 +136,9 @@ class HttpApiClient implements ApiClient {
             429 => 'Too many attempts. Wait a minute and try again.',
             _ => 'Something went wrong on the server ($status). Try again.',
           };
+    if (status == 401) {
+      onUnauthorized?.call(message);
+    }
     return ApiException(
       status,
       message,
@@ -145,6 +146,47 @@ class HttpApiClient implements ApiClient {
       missing: lists(json['missing']),
     );
   }
+
+  @override
+  Future<SignInOptions> signInOptions() async {
+    try {
+      return SignInOptions.fromJson(await _send('GET', '/sign-in'));
+    } on ApiException catch (error) {
+      if (error.statusCode == 404) {
+        // A server from before Sign in with SmileID: passwords only.
+        return const SignInOptions(smileId: false, password: true);
+      }
+      rethrow;
+    }
+  }
+
+  @override
+  Uri smileIdStartUrl({
+    required String challenge,
+    required String device,
+    String? email,
+    bool another = false,
+  }) => Uri.parse('$_baseUrl/app/sign-in').replace(
+    queryParameters: {
+      'challenge': challenge,
+      'device': device,
+      if (email != null && email.trim().isNotEmpty) 'email': email.trim(),
+      if (another) 'switch': '1',
+    },
+  );
+
+  @override
+  Future<LoginResult> loginWithSmileId({
+    required String ticket,
+    required String verifier,
+    required String device,
+  }) async => LoginResult.fromJson(
+    await _send(
+      'POST',
+      '/login/smileid',
+      body: {'ticket': ticket, 'verifier': verifier, 'device': device},
+    ),
+  );
 
   @override
   Future<LoginResult> login({

@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:drshine/api/api_client.dart';
 import 'package:drshine/api/http_api_client.dart';
+import 'package:drshine/auth/browser_sign_in.dart';
 import 'package:drshine/util/format.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -157,7 +159,7 @@ void main() {
       var expired = false;
       final api = HttpApiClient(
         client: MockClient((_) async => json({}, 401)),
-        onUnauthorized: () => expired = true,
+        onUnauthorized: (_) => expired = true,
       );
       await expectLater(
         api.me(),
@@ -170,6 +172,20 @@ void main() {
         ),
       );
       expect(expired, isTrue);
+    });
+
+    test('a 401 hands the app the server\'s reason', () async {
+      String? reason;
+      final api = HttpApiClient(
+        client: MockClient(
+          (_) async => json({
+            'message': 'Your SmileID session has ended. Please sign in again.',
+          }, 401),
+        ),
+        onUnauthorized: (message) => reason = message,
+      );
+      await expectLater(api.patients(), throwsA(isA<ApiException>()));
+      expect(reason, 'Your SmileID session has ended. Please sign in again.');
     });
 
     test('a network failure says the server cannot be reached', () async {
@@ -251,6 +267,164 @@ void main() {
         HttpApiClient.normalizeBaseUrl('http://127.0.0.1:8030//'),
         'http://127.0.0.1:8030',
       );
+    });
+  });
+
+  group('Sign in with SmileID', () {
+    test('asks the server which ways to sign in it takes', () async {
+      late http.Request sent;
+      final api = HttpApiClient(
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          sent = request;
+          return json({'smileid': true, 'password': false});
+        }),
+      );
+      final options = await api.signInOptions();
+      expect(sent.method, 'GET');
+      expect(sent.url.toString(), 'https://example.test/api/app/v1/sign-in');
+      expect(sent.headers.containsKey('Authorization'), isFalse);
+      expect(options.smileId, isTrue);
+      expect(options.password, isFalse);
+    });
+
+    test('a server from before SmileID takes passwords only', () async {
+      final api = HttpApiClient(
+        client: MockClient((_) async => json({'message': 'Not found.'}, 404)),
+      );
+      final options = await api.signInOptions();
+      expect(options.smileId, isFalse);
+      expect(options.password, isTrue);
+    });
+
+    test('the start link carries challenge, device and email', () {
+      final api = HttpApiClient(baseUrl: 'https://example.test/');
+      final link = api.smileIdStartUrl(
+        challenge: 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        device: 'drShine on iPhone',
+        email: ' doctor@drshine.test ',
+      );
+      expect(link.scheme, 'https');
+      expect(link.host, 'example.test');
+      expect(link.path, '/app/sign-in');
+      expect(link.queryParameters, {
+        'challenge': 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+        'device': 'drShine on iPhone',
+        'email': 'doctor@drshine.test',
+      });
+    });
+
+    test('the start link for another SmileID carries switch=1', () {
+      final api = HttpApiClient(baseUrl: 'http://127.0.0.1:8030');
+      final link = api.smileIdStartUrl(
+        challenge: 'c' * 43,
+        device: 'drShine on Android',
+        another: true,
+      );
+      expect(
+        link.toString(),
+        'http://127.0.0.1:8030/app/sign-in'
+        '?challenge=${'c' * 43}&device=drShine+on+Android&switch=1',
+      );
+    });
+
+    test('the challenge is sha256 of the verifier, base64url, no padding', () {
+      // The example from RFC 7636, appendix B.
+      expect(
+        challengeFor('dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk'),
+        'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM',
+      );
+
+      final verifier = newVerifier();
+      expect(verifier, matches(RegExp(r'^[A-Za-z0-9_-]{43}$')));
+      expect(newVerifier(), isNot(verifier));
+      final challenge = challengeFor(verifier);
+      expect(challenge, matches(RegExp(r'^[A-Za-z0-9_-]{43}$')));
+      expect(
+        challenge,
+        base64Url
+            .encode(sha256.convert(utf8.encode(verifier)).bytes)
+            .replaceAll('=', ''),
+      );
+    });
+
+    test('exchanges the ticket and the verifier for a token', () async {
+      late http.Request sent;
+      final api = HttpApiClient(
+        baseUrl: 'https://example.test',
+        client: MockClient((request) async {
+          sent = request;
+          return json({'token': 'tok', 'user': userJson()});
+        }),
+      );
+      final result = await api.loginWithSmileId(
+        ticket: 't' * 48,
+        verifier: 'v' * 43,
+        device: 'drShine on iPhone',
+      );
+      expect(sent.method, 'POST');
+      expect(
+        sent.url.toString(),
+        'https://example.test/api/app/v1/login/smileid',
+      );
+      expect(jsonDecode(sent.body), {
+        'ticket': 't' * 48,
+        'verifier': 'v' * 43,
+        'device': 'drShine on iPhone',
+      });
+      expect(result.needsTwoFactor, isFalse);
+      expect(result.token, 'tok');
+      expect(result.user!.email, 'doctor@drshine.test');
+    });
+
+    test('a refused ticket carries the server message', () async {
+      final api = HttpApiClient(
+        client: MockClient(
+          (_) async => json({
+            'message': 'This sign-in has expired. Please sign in again.',
+            'errors': {
+              'ticket': ['This sign-in has expired. Please sign in again.'],
+            },
+          }, 422),
+        ),
+      );
+      await expectLater(
+        api.loginWithSmileId(ticket: 't', verifier: 'v', device: 'x'),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.statusCode, 'status', 422)
+              .having(
+                (e) => e.errorFor('ticket'),
+                'ticket',
+                'This sign-in has expired. Please sign in again.',
+              ),
+        ),
+      );
+    });
+
+    test('every error code has its sentence', () {
+      expect(
+        smileIdErrorSentence('not_finished'),
+        "Signing in with SmileID didn't finish. Please try again.",
+      );
+      expect(
+        smileIdErrorSentence('switched_off'),
+        'This SmileID is switched off.',
+      );
+      expect(
+        smileIdErrorSentence('no_account'),
+        "There is no drShine account for this SmileID. Your clinic's director can invite you.",
+      );
+      expect(
+        smileIdErrorSentence('clinic_off'),
+        "This clinic's account is switched off. Contact SmileLabs.",
+      );
+      expect(
+        smileIdErrorSentence('not_ready'),
+        "Sign in with SmileID isn't ready on this server yet.",
+      );
+      expect(smileIdErrorSentence('unheard_of'), smileIdErrorSentence(null));
+      expect(smileIdErrorSentence(null), smileIdErrorSentence('not_finished'));
     });
   });
 

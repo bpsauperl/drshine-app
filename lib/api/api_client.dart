@@ -5,8 +5,7 @@ import 'models.dart';
 export 'models.dart';
 
 /// The drShine production (DEV) server the app talks to by default.
-const String defaultServerUrl =
-    'https://drshine-dev-h4s1yo.laravel.cloud';
+const String defaultServerUrl = 'https://drshine-dev-h4s1yo.laravel.cloud';
 
 /// An API error with the server's own message.
 class ApiException implements Exception {
@@ -50,6 +49,25 @@ abstract class ApiClient {
   /// The Bearer token, or null when signed out.
   String? get token;
   set token(String? value);
+
+  /// Which ways to sign in the server takes (`GET /sign-in`, no token needed).
+  Future<SignInOptions> signInOptions();
+
+  /// The page the sign-in sheet opens (`{server}/app/sign-in`, outside the API
+  /// prefix). [another] first signs the browser out of SmileID.
+  Uri smileIdStartUrl({
+    required String challenge,
+    required String device,
+    String? email,
+    bool another = false,
+  });
+
+  /// Exchanges the sheet's one-time [ticket] and this phone's [verifier] for a token.
+  Future<LoginResult> loginWithSmileId({
+    required String ticket,
+    required String verifier,
+    required String device,
+  });
 
   Future<LoginResult> login({
     required String email,

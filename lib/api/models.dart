@@ -73,7 +73,23 @@ class User {
   final Ref? clinic;
 }
 
-/// What `POST /login` answers: a token and user, or a two-step challenge.
+/// What `GET /sign-in` answers: the ways to sign in this server takes.
+class SignInOptions {
+  const SignInOptions({required this.smileId, required this.password});
+
+  factory SignInOptions.fromJson(Json json) => SignInOptions(
+    smileId: _bool(json['smileid']),
+    password: _bool(json['password']),
+  );
+
+  /// Sign in with SmileID is set up on the server.
+  final bool smileId;
+
+  /// The server still takes drShine passwords. False hides every password control.
+  final bool password;
+}
+
+/// What the sign-in calls answer: a token and user, or a two-step challenge.
 class LoginResult {
   const LoginResult({this.token, this.user, this.challenge});
 

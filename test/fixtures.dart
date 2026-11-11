@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:drshine/api/api_client.dart';
 import 'package:drshine/app.dart';
+import 'package:drshine/auth/browser_sign_in.dart';
 import 'package:drshine/state/app_state.dart';
 import 'package:drshine/state/session_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -294,12 +295,64 @@ class FakeApi implements ApiClient {
   /// The orders `patient()` returns.
   List<Map<String, dynamic>> patientOrders = [];
 
+  /// What `signInOptions()` answers; null plays a server that can't be reached.
+  SignInOptions? options = const SignInOptions(smileId: true, password: false);
+
+  /// The tickets the fake sheet handed out, each with the challenge it was for.
+  final Map<String, String> tickets = {};
+  String? lastVerifier;
+
   void _maybeFail() {
     final f = failNext;
     if (f != null) {
       failNext = null;
       throw f;
     }
+  }
+
+  @override
+  Future<SignInOptions> signInOptions() async =>
+      options ?? (throw const ApiException(0, "Can't reach the server."));
+
+  @override
+  Uri smileIdStartUrl({
+    required String challenge,
+    required String device,
+    String? email,
+    bool another = false,
+  }) => Uri.parse('$baseUrl/app/sign-in').replace(
+    queryParameters: {
+      'challenge': challenge,
+      'device': device,
+      'email': ?email,
+      if (another) 'switch': '1',
+    },
+  );
+
+  /// Like the server: a ticket works once, and only with the verifier whose
+  /// challenge it was made for.
+  @override
+  Future<LoginResult> loginWithSmileId({
+    required String ticket,
+    required String verifier,
+    required String device,
+  }) async {
+    lastVerifier = verifier;
+    _maybeFail();
+    if (tickets.remove(ticket) != challengeFor(verifier)) {
+      const message = 'This sign-in has expired. Please sign in again.';
+      throw const ApiException(
+        422,
+        message,
+        errors: {
+          'ticket': [message],
+        },
+      );
+    }
+    return LoginResult(
+      token: 'token-smileid',
+      user: User.fromJson(userJson(canSend: userCanSend)),
+    );
   }
 
   @override
@@ -423,13 +476,56 @@ class FakeApi implements ApiClient {
   }
 }
 
+/// The sign-in sheet, faked: it hands back a ticket for the link's challenge,
+/// an error code, or nothing when the user closes it.
+class FakeBrowserSignIn implements BrowserSignIn {
+  FakeBrowserSignIn(this.api);
+
+  final FakeApi api;
+
+  /// Every link the app opened.
+  final List<Uri> opened = [];
+
+  /// The user closes the sheet.
+  bool closes = false;
+
+  /// The server sends the sheet back with this error code.
+  String? error;
+
+  /// The challenge the ticket is made for; the link's own when null.
+  String? ticketChallenge;
+
+  @override
+  Future<Uri?> open(Uri url) async {
+    opened.add(url);
+    if (closes) {
+      return null;
+    }
+    if (error != null) {
+      return Uri.parse('si.smilelabs.drshine:/callback?error=$error');
+    }
+    final ticket = 'ticket-${opened.length}';
+    api.tickets[ticket] = ticketChallenge ?? url.queryParameters['challenge']!;
+    return Uri.parse('si.smilelabs.drshine:/callback?ticket=$ticket');
+  }
+}
+
 /// Starts the whole app with [api] and [store] and lets it settle.
+///
+/// [browser] is the sign-in sheet (a [FakeBrowserSignIn] by default);
+/// [webPreview] starts the app without one, as in the web preview.
 Future<AppState> pumpApp(
   WidgetTester tester,
   FakeApi api,
-  MemorySessionStore store,
-) async {
-  final state = AppState(api: api, store: store);
+  MemorySessionStore store, {
+  BrowserSignIn? browser,
+  bool webPreview = false,
+}) async {
+  final state = AppState(
+    api: api,
+    store: store,
+    browser: webPreview ? null : browser ?? FakeBrowserSignIn(api),
+  );
   await tester.pumpWidget(DrShineApp(state: state));
   await state.start();
   await tester.pumpAndSettle();

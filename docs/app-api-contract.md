@@ -4,19 +4,53 @@ Base URL is configurable in each app. DEV: `https://drshine-dev-h4s1yo.laravel.c
 
 - **Format:** JSON in and out, UTF-8, dates ISO 8601 (`2026-10-26`, `2026-10-26T09:30:00+01:00`).
 - **Auth:** `Authorization: Bearer <token>`. Tokens are opaque strings; store them in the platform keychain (`flutter_secure_storage`).
-- **Status codes:** `401` means the token is invalid or expired → go to sign-in. `403` means not allowed. `409` means the state doesn't allow it (show `message`). `422` is validation: `{message, errors: {field: [msg]}}`. `429` means too many attempts.
+- **Status codes:** `401` means the token is invalid or expired → go to sign-in and show its `message` once. `403` means not allowed. `409` means the state doesn't allow it (show `message`). `422` is validation: `{message, errors: {field: [msg]}}`. `429` means too many attempts.
 
 ---
 
 ## A. drShine app (clinic users) — prefix `/api/app/v1`
 
 ### Sign-in
+
+The app signs in with **SmileID**. drShine's server is the SmileID (OpenID Connect) client; the phone only opens the system sign-in sheet and gets a drShine token back.
+
+- `GET /sign-in` (no token) → `{smileid: bool, password: bool}`. `smileid` says Sign in with SmileID is set up on this server. `password: false` means the server takes no passwords: the app hides every password control.
+
+Sign in with SmileID, in three steps:
+
+1. The app makes a secret, the **verifier** (32 random bytes, base64url without padding, 43 characters), and its **challenge** (`sha256(verifier)`, base64url without padding, 43 characters). The verifier never leaves the phone until step 3.
+2. The app opens the start link in the system sign-in sheet (ASWebAuthenticationSession on iPhone, Custom Tabs on Android), with the callback scheme `si.smilelabs.drshine`. The link is **not** under `/api/app/v1`:
+   `{server}/app/sign-in?challenge=<challenge>&device=<device name>&email=<last email, optional>&switch=1`
+   - `email` pre-fills SmileID with the last address used on this phone.
+   - `switch=1` is sent only for "Use another SmileID": the browser is first signed out of SmileID.
+   - The sheet ends on `si.smilelabs.drshine:/callback?ticket=<48 chars>` or on `si.smilelabs.drshine:/callback?error=<code>`. Closing the sheet is not an error.
+3. `POST /login/smileid {ticket, verifier, device}` → `200 {token, user}` (as `/login`), or `422 {message, errors: {ticket: [msg]}}`. A ticket works once, for 2 minutes, and only with the verifier its challenge was made from.
+
+Error codes from the sheet and what the app says:
+
+| `error` | Sentence |
+| --- | --- |
+| `not_finished` | Signing in with SmileID didn't finish. Please try again. |
+| `switched_off` | This SmileID is switched off. |
+| `no_account` | There is no drShine account for this SmileID. Your clinic's director can invite you. |
+| `clinic_off` | This clinic's account is switched off. Contact SmileLabs. |
+| `not_ready` | Sign in with SmileID isn't ready on this server yet. |
+
+Any other code reads like `not_finished`.
+
+With a drShine password, only while `password` is true:
+
 - `POST /login {email, password, device}`
   - → `200 {token, user}`
   - or `200 {two_factor: true, challenge}` (challenge is valid 10 min)
+  - or `422` with `errors.email` "Your clinic signs in with SmileID." when the clinic or the server takes no passwords
 - `POST /login/two-factor {challenge, code}` → `200 {token, user}`. `code` is the 6-digit TOTP or a recovery code.
+
+The session:
+
 - `POST /logout` → `204`
 - `GET /me` → `{user}`
+- A `401` carries `{message}`, for example "Your SmileID session has ended. Please sign in again." (the SmileID was switched off; drShine checks it at most every 5 minutes) or "Sign in again with SmileID." (a token from a password, after passwords went off). The app goes back to sign-in and shows the sentence once.
 
 `user` = `{id, name, email, role, role_label, can_send, clinic: {id, name}}`. `can_send` is true for treating doctors: only they send orders; assistants prepare.
 

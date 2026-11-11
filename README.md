@@ -10,7 +10,7 @@ The clinics' app for **Shine clear aligners** (SmileLabs, Slovenia). A dentist o
 
 | Screen | What it does |
 | --- | --- |
-| Sign in | Email and password, then the 6-digit two-step code (or a recovery code) when the server asks for it. "Server" changes the base URL. |
+| Sign in | **Sign in with SmileID** opens SmileID in the system sign-in sheet (Face ID, Touch ID or a code by email) and comes back signed in. "Use another SmileID" picks a different one. "Use your drShine password" (email and password, then the 6-digit two-step code or a recovery code) shows only while the server still takes passwords. "Server" changes the base URL for both. |
 | Patients | Search by name or ID, the list (name, status, ID), and "New patient". |
 | Patient | Summary and orders. "New Aligners order", or continue a draft. |
 | Order builder | A progress strip: **Plan** (only when `plan_choice.asks`), **Photos**, **Scans**, **RX**, **Submit**. |
@@ -26,8 +26,11 @@ lib/
     api_client.dart          ApiClient interface + ApiException (fakeable in tests)
     http_api_client.dart     the HTTP implementation (package:http)
     models.dart              JSON models for contract v1
+  auth/
+    browser_sign_in.dart     the system sign-in sheet (flutter_web_auth_2, fakeable in tests),
+                             the verifier and its challenge, the error sentences
   state/
-    app_state.dart           session: server, token, user (ChangeNotifier)
+    app_state.dart           session: server, token, user, sign-in options (ChangeNotifier)
     session_store.dart       token in flutter_secure_storage, server in shared_preferences
     order_builder.dart       the builder's logic: steps, completion, missing, attestations, uploads
   screens/
@@ -68,13 +71,27 @@ cd build/web && python3 -m http.server 8077     # then open http://127.0.0.1:807
 
 See [docs/app-api-contract.md](docs/app-api-contract.md), section A. The app codes strictly against it:
 
-- `POST /login` (and `/login/two-factor`), `POST /logout`, `GET /me`;
+- `GET /sign-in`, `POST /login/smileid`, `POST /login` (and `/login/two-factor`), `POST /logout`, `GET /me`;
 - `GET/POST /patients`, `GET /patients/{id}`;
 - `POST /orders`, `GET /orders/{id}`, `PUT /orders/{id}/plan`, `POST /orders/{id}/files`, `GET/DELETE /orders/{id}/files/{file}`, `PUT /orders/{id}/rx`, `GET /orders/{id}/scans`, `POST /orders/{id}/scans/{scan}/import`, `POST /orders/{id}/submit`.
 
-All HTTP lives in `lib/api/`. A `401` signs the user out; `403`, `409`, `422` and `429` show the server's `message`.
+All HTTP lives in `lib/api/`. A `401` signs the user out and its `message` is shown once on the sign-in screen; `403`, `409`, `422` and `429` show the server's `message`.
+
+### Sign in with SmileID
+
+drShine's server is the SmileID client; the app holds no SmileID secret and never sees a password, passkey or code.
+
+1. The app makes a one-time secret (the verifier) and opens `{server}/app/sign-in?challenge=…&device=…` in the system sign-in sheet (`flutter_web_auth_2`: ASWebAuthenticationSession on iPhone, Custom Tabs on Android; private, so nothing stays signed in there). The challenge is sha256 of the verifier.
+2. The person signs in at SmileID. The sheet comes back on `si.smilelabs.drshine:/callback` with a one-time ticket, or with an error code the app turns into a sentence. Closing the sheet does nothing.
+3. The app posts the ticket and the verifier to `POST /login/smileid` and gets the drShine token. The ticket is useless without the verifier, which never left the phone.
+
+- **Android:** the callback is the `CallbackActivity` in `android/app/src/main/AndroidManifest.xml` (scheme `si.smilelabs.drshine`). **iOS:** nothing in `Info.plist`; the sheet takes the scheme itself.
+- **Passwords follow the server.** `GET /sign-in` says whether passwords are on. While the answer is loading, or the server can't be reached, the app shows only the SmileID button. The day the server switches passwords off, the link disappears without a new release.
+- **Web preview:** there is no sign-in sheet; the SmileID button says it works in the phone app.
+- **Tests** use `FakeBrowserSignIn` (`test/fixtures.dart`) in place of the sheet.
 
 How the app reads the contract:
+- A server that has no `GET /sign-in` yet (`404`) is read as "passwords only", and the password form starts open, so the app still works against a server from before SmileID.
 - Photo outlines are chosen by **slot** first (it tells left from right), with the `guide` key as the fallback for new slots.
 - The **Scans** step covers the server's `impressions` and `cbct` steps. Uploading `.stl` files is left to drshine web.
 - Photos are uploaded as JPEG; a new photo replaces whatever was in the slot.
@@ -116,6 +133,6 @@ The Android build declares the camera permission, uses `minSdk` 23 or higher, an
 - **Store screenshots** for iPhone (and iPad, if offered) and Android phones.
 - **Privacy policy URL** for both stores, plus the App Store privacy answers and the Play data-safety form (the app handles patient photos and health data).
 - **Choose from library:** not in this version. The `camera` package can't pick from the gallery, and none of the allowed packages can.
-- **A first run on real devices:** camera permission, flash, front/back switching and uploads haven't been tried on hardware yet (the app was built and tested without Xcode or the Android SDK).
+- **A first run on real devices:** camera permission, flash, front/back switching and uploads haven't been tried on hardware yet (the app was built and tested without Xcode or the Android SDK). The same goes for Sign in with SmileID: the sheet, Face ID with a passkey and the return to the app are proven only against fakes in the tests.
 
 The sample data in the tests is made up. Never use real patient names or photos as sample data.

@@ -22,11 +22,8 @@ class AppState extends ChangeNotifier {
   User? user;
   String? lastEmail;
 
-  /// Set while the server asks for the two-step code.
-  String? twoFactorChallenge;
-
-  /// The ways to sign in the server takes. Null while loading, or when the
-  /// server can't be reached: then only the SmileID button shows.
+  /// Whether the server has Sign in with SmileID. Null while loading, or when
+  /// the server can't be reached.
   SignInOptions? signInOptions;
 
   /// Why the app is back on sign-in (the server's `401` message), until shown.
@@ -35,8 +32,8 @@ class AppState extends ChangeNotifier {
 
   String get serverUrl => api.baseUrl;
 
-  /// True only when the server said it still takes drShine passwords.
-  bool get passwordAllowed => signInOptions?.password ?? false;
+  /// True only when the server answered that it has no Sign in with SmileID.
+  bool get smileIdMissing => signInOptions?.smileId == false;
 
   /// The server's reason for the last sign-out, once.
   String? takeSignInNotice() {
@@ -80,7 +77,7 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  /// Asks the server which ways to sign in it takes. The last answer stays
+  /// Asks the server whether it has Sign in with SmileID. The last answer stays
   /// until the new one is in; a server that can't be reached clears it.
   Future<void> loadSignInOptions() async {
     final request = ++_optionsRequest;
@@ -138,52 +135,10 @@ class AppState extends ChangeNotifier {
     await _signedIn(result);
   }
 
-  /// Signs in with a drShine password. Returns true when the server asks for
-  /// the two-step code next.
-  Future<bool> signIn({
-    required String email,
-    required String password,
-    required String device,
-  }) async {
-    final result = await api.login(
-      email: email.trim(),
-      password: password,
-      device: device,
-    );
-    lastEmail = email.trim();
-    await store.writeLastEmail(lastEmail!);
-    if (result.needsTwoFactor) {
-      twoFactorChallenge = result.challenge;
-      notifyListeners();
-      return true;
-    }
-    await _signedIn(result);
-    return false;
-  }
-
-  Future<void> confirmTwoFactor(String code) async {
-    final challenge = twoFactorChallenge;
-    if (challenge == null) {
-      throw const ApiException(422, 'Sign in again to get a new code.');
-    }
-    await _signedIn(
-      await api.loginTwoFactor(
-        challenge: challenge,
-        code: code.replaceAll(' ', ''),
-      ),
-    );
-  }
-
-  void cancelTwoFactor() {
-    twoFactorChallenge = null;
-    notifyListeners();
-  }
-
   Future<void> _signedIn(LoginResult result) async {
     api.token = result.token;
     await store.writeToken(result.token);
     user = result.user;
-    twoFactorChallenge = null;
     _signInNotice = null;
     _set(SessionStatus.signedIn);
   }

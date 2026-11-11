@@ -73,38 +73,28 @@ class User {
   final Ref? clinic;
 }
 
-/// What `GET /sign-in` answers: the ways to sign in this server takes.
+/// What `GET /sign-in` answers. SmileID is the only way to sign in.
 class SignInOptions {
-  const SignInOptions({required this.smileId, required this.password});
+  const SignInOptions({required this.smileId});
 
-  factory SignInOptions.fromJson(Json json) => SignInOptions(
-    smileId: _bool(json['smileid']),
-    password: _bool(json['password']),
-  );
+  factory SignInOptions.fromJson(Json json) =>
+      SignInOptions(smileId: _bool(json['smileid']));
 
   /// Sign in with SmileID is set up on the server.
   final bool smileId;
-
-  /// The server still takes drShine passwords. False hides every password control.
-  final bool password;
 }
 
-/// What the sign-in calls answer: a token and user, or a two-step challenge.
+/// What the sign-in call answers: the app's token and the user.
 class LoginResult {
-  const LoginResult({this.token, this.user, this.challenge});
+  const LoginResult({this.token, this.user});
 
-  factory LoginResult.fromJson(Json json) => _bool(json['two_factor'])
-      ? LoginResult(challenge: _str(json['challenge']))
-      : LoginResult(
-          token: _str(json['token']),
-          user: User.fromJson(_map(json['user'])),
-        );
+  factory LoginResult.fromJson(Json json) => LoginResult(
+    token: _str(json['token']),
+    user: User.fromJson(_map(json['user'])),
+  );
 
   final String? token;
   final User? user;
-  final String? challenge;
-
-  bool get needsTwoFactor => challenge != null;
 }
 
 class Patient {

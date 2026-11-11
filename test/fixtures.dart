@@ -285,9 +285,6 @@ class FakeApi implements ApiClient {
   String? token;
 
   Map<String, dynamic> orderData;
-  bool twoFactor = false;
-  String? lastPassword;
-  String? lastCode;
   List<String>? submitted;
   Rx? savedRx;
   final List<String> uploads = [];
@@ -298,7 +295,7 @@ class FakeApi implements ApiClient {
   List<Map<String, dynamic>> patientOrders = [];
 
   /// What `signInOptions()` answers; null plays a server that can't be reached.
-  SignInOptions? options = const SignInOptions(smileId: true, password: false);
+  SignInOptions? options = const SignInOptions(smileId: true);
 
   /// The tickets the fake sheet handed out, each with the challenge it was for.
   final Map<String, String> tickets = {};
@@ -353,36 +350,6 @@ class FakeApi implements ApiClient {
     }
     return LoginResult(
       token: 'token-smileid',
-      user: User.fromJson(userJson(canSend: userCanSend)),
-    );
-  }
-
-  @override
-  Future<LoginResult> login({
-    required String email,
-    required String password,
-    required String device,
-  }) async {
-    lastPassword = password;
-    _maybeFail();
-    if (twoFactor) {
-      return const LoginResult(challenge: 'challenge-1');
-    }
-    return LoginResult(
-      token: 'token-1',
-      user: User.fromJson(userJson(canSend: userCanSend)),
-    );
-  }
-
-  @override
-  Future<LoginResult> loginTwoFactor({
-    required String challenge,
-    required String code,
-  }) async {
-    lastCode = code;
-    _maybeFail();
-    return LoginResult(
-      token: 'token-2',
       user: User.fromJson(userJson(canSend: userCanSend)),
     );
   }

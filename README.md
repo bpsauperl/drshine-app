@@ -10,7 +10,7 @@ The clinics' app for **Shine clear aligners** (SmileLabs, Slovenia). A dentist o
 
 | Screen | What it does |
 | --- | --- |
-| Sign in | **Sign in with SmileID** opens SmileID in the system sign-in sheet (Face ID, Touch ID or a code by email) and comes back signed in. "Use another SmileID" picks a different one. "Use your drShine password" (email and password, then the 6-digit two-step code or a recovery code) shows only while the server still takes passwords. "Server" changes the base URL for both. |
+| Sign in | **Sign in with SmileID** opens SmileID in the system sign-in sheet (Face ID, Touch ID or a code by email) and comes back signed in. "Use another SmileID" picks a different one. There is no password and nothing to type: SmileID is the only way in. "Server" changes the base URL. |
 | Patients | Search by name or ID, the list (name, status, ID), and "New patient". |
 | Patient | Summary and orders. "New Aligners order", or continue a draft. |
 | Order builder | A progress strip: **Plan** (only when `plan_choice.asks`), **Photos**, **Scans**, **RX**, **Submit**. |
@@ -76,7 +76,7 @@ cd build/web && python3 -m http.server 8077     # then open http://127.0.0.1:807
 
 See [docs/app-api-contract.md](docs/app-api-contract.md), section A. The app codes strictly against it:
 
-- `GET /sign-in`, `POST /login/smileid`, `POST /login` (and `/login/two-factor`), `POST /logout`, `GET /me`;
+- `GET /sign-in`, `POST /login/smileid`, `POST /logout`, `GET /me`;
 - `GET/POST /patients`, `GET /patients/{id}`;
 - `POST /orders`, `GET /orders/{id}`, `PUT /orders/{id}/plan`, `POST /orders/{id}/files`, `GET/DELETE /orders/{id}/files/{file}`, `PUT /orders/{id}/rx`, `GET /orders/{id}/scans`, `POST /orders/{id}/scans/{scan}/import`, `POST /orders/{id}/submit`.
 
@@ -91,7 +91,7 @@ drShine's server is the SmileID client; the app holds no SmileID secret and neve
 3. The app posts the ticket and the verifier to `POST /login/smileid` and gets the drShine token. The ticket is useless without the verifier, which never left the phone.
 
 - **Android:** the callback is the `CallbackActivity` in `android/app/src/main/AndroidManifest.xml` (scheme `si.smilelabs.drshine`). **iOS:** nothing in `Info.plist`; the sheet takes the scheme itself.
-- **Passwords follow the server.** `GET /sign-in` says whether passwords are on. While the answer is loading, or the server can't be reached, the app shows only the SmileID button. The day the server switches passwords off, the link disappears without a new release.
+- **No passwords.** The app has no email, password or code fields, and calls no password endpoint. `GET /sign-in` only says whether the server has Sign in with SmileID; when it answers no, the screen says "Sign in with SmileID isn't ready on this server yet." above the button.
 - **Web preview:** there is no sign-in sheet; the SmileID button says it works in the phone app.
 - **Tests** use `FakeBrowserSignIn` (`test/fixtures.dart`) in place of the sheet.
 
@@ -107,7 +107,7 @@ A cover over the patient data on this phone, opened by the phone's own unlock (`
 - **Web preview:** no lock. **Tests** use `FakeDeviceUnlock` (`test/fixtures.dart`) and a clock they set.
 
 How the app reads the contract:
-- A server that has no `GET /sign-in` yet (`404`) is read as "passwords only", and the password form starts open, so the app still works against a server from before SmileID.
+- A server that has no `GET /sign-in` yet (`404`) is read as a server without SmileID: the app says so and offers no other way in.
 - Photo outlines are chosen by **slot** first (it tells left from right), with the `guide` key as the fallback for new slots.
 - The **Scans** step covers the server's `impressions` and `cbct` steps. Uploading `.stl` files is left to drshine web.
 - Photos are uploaded as JPEG; a new photo replaces whatever was in the slot.

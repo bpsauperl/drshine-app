@@ -393,6 +393,35 @@ void main() {
     });
 
     testWidgets(
+      'a session the server ends while a patient is open closes that screen too',
+      (tester) async {
+        const sentence =
+            'Your SmileID session has ended. Please sign in again.';
+        final state = await pumpApp(
+          tester,
+          FakeApi(),
+          MemorySessionStore(token: 'saved'),
+        );
+        tester
+            .state<NavigatorState>(find.byType(Navigator))
+            .push(
+              MaterialPageRoute<void>(
+                builder: (_) => const Scaffold(body: Text('A patient')),
+              ),
+            );
+        await tester.pumpAndSettle();
+        expect(find.text('A patient'), findsOneWidget);
+
+        await state.sessionExpired(sentence);
+        await tester.pumpAndSettle();
+
+        expect(find.text('A patient'), findsNothing);
+        expect(find.text('Welcome back.'), findsOneWidget);
+        expect(find.text(sentence), findsOneWidget);
+      },
+    );
+
+    testWidgets(
       'a session the server ends falls back to sign-in with its reason',
       (tester) async {
         const sentence = 'Sign in again with SmileID.';
